@@ -1,0 +1,22 @@
+<launch>
+  <!-- No namespace here as we will share this description. 
+       Access with slash at the beginning -->
+  <arg name="config" default="front_laser" />
+  <!--param name="robot_description"
+         command="$(find jackal_description)/scripts/env_run
+                    $(find jackal_description)/urdf/configs/$(arg config)
+                    $(find xacro)/xacro $(find jackal_description)/urdf/jackal.urdf.xacro" /-->
+  <!-- BEGIN ROBOT -->
+  <group ns="robot0">
+    <param name="tf_prefix" value="robot_tf" />
+    <param name="robot_description" command="$(find xacro)/xacro.py '$(find mastering_ros_robot_description_pkg)/urdf/diff_wheeled_robot0.xacro'" />
+
+    <include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/one_robot.launch" >
+      <arg name="init_pose" value="-x 0 -y -0 -z 0.1 -R 0 -P 0 -Y 0.5" />
+      <arg name="robot_name"  value="robot0" />
+    </include>
+
+  </group>
+
+
+</launch>

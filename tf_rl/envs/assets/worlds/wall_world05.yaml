@@ -1,0 +1,7 @@
+image: /home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/worlds/wall_world05.world/wall_world05.pgm
+resolution: 0.020000
+origin: [-20.240000, -20.240000, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+

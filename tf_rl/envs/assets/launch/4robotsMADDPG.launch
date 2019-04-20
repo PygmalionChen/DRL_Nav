@@ -1,0 +1,40 @@
+<launch>
+  <arg name="config" default="front_laser" />
+  <!-- BEGIN ROBOT 0 -->
+  <group ns="robot0">
+    <param name="tf_prefix" value="robot0_tf" />
+    <param name="robot_description" command="$(find xacro)/xacro.py '$(find mastering_ros_robot_description_pkg)/urdf/diff_wheeled_robot0.xacro'" />
+    <include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/one_robot.launch" >
+      <arg name="init_pose" value="-x -5 -y -8 -z 0 -R 0 -P 0 -Y 0" />
+      <arg name="robot_name"  value="robot0" />
+    </include>
+  </group>
+  <!-- BEGIN ROBOT 1-->
+  <group ns="robot1">
+    <param name="tf_prefix" value="robot1_tf" />
+    <param name="robot_description" command="$(find xacro)/xacro.py '$(find mastering_ros_robot_description_pkg)/urdf/diff_wheeled_robot1.xacro'" />
+    <include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/one_robot.launch" >
+      <arg name="init_pose" value="-x -5 -y -6 -z 0 -R 0 -P 0 -Y 0" />
+      <arg name="robot_name"  value="robot1" />
+    </include>
+  </group>
+  <!-- BEGIN ROBOT 2-->
+  <group ns="robot2">
+    <param name="tf_prefix" value="robot2_tf" />
+    <param name="robot_description" command="$(find xacro)/xacro.py '$(find mastering_ros_robot_description_pkg)/urdf/diff_wheeled_robot2.xacro'" /> 
+    <include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/one_robot.launch" >
+      <arg name="init_pose" value="-x -3 -y -8 -z 0 -R 0 -P 0 -Y 0" />
+      <arg name="robot_name"  value="robot2" />
+    </include>
+  </group>
+  <!-- BEGIN ROBOT 3-->
+  <group ns="robot3">
+    <param name="tf_prefix" value="robot3_tf" />
+    <param name="robot_description" command="$(find xacro)/xacro.py '$(find mastering_ros_robot_description_pkg)/urdf/diff_wheeled_robot3.xacro'" /> 
+    <include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/one_robot.launch" >
+      <arg name="init_pose" value="-x -3 -y -6 -z 0 -R 0 -P 0 -Y 0" />
+      <arg name="robot_name"  value="robot3" />
+    </include>
+  </group>
+
+</launch>
