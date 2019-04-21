@@ -184,8 +184,8 @@ class DDPG(object):
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=5)
 
-        self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/formation/model_190000.ckpt")
-        # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/toPoints/model_53000.ckpt")
+        # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/formation/model_190000.ckpt")
+        self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/toPoints/model_53000.ckpt")
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/SingleGood/model_38750.ckpt")
 
         self.merged = tf.summary.merge_all()
@@ -388,8 +388,8 @@ for i in range(MAX_EPISODES):
     # gl = [[0, -5],[0,-1],[0,3],[0,7]]
 
     # 对角直线
-    # gl = [[-4,-6], [-3,-5], [-2,-4], [-1,-3], [0,-2], [1,-1], [2,0], [3,1], [4,2], [5,3]]
-    gl = [[-4, -6], [-3, -5], [-2, 2], [3, 1], [4, 2], [5, 3]]
+    gl = [[-4,-6], [-3,-5], [-2,-4], [-1,-3], [0,-2], [1,-1], [2,0], [3,1], [4,2], [5,3]]
+    # gl = [[-4, -6], [-3, -5], [-2, 2], [3, 1], [4, 2], [5, 3]]
 
     # 环形路线
     # gl = [[-3.5, -6], [-3.0, -6], [-2.5, -6], [-2.0, -6], [-1.5, -6], [-1.0, -6], [-0.5, -6], [0.0, -6], [0.5, -6], [1.0, -6], [1.5, -6], [2.0, -6], [2.5, -6], [3.0, -6], [3.5, -6], [4.0, -6], [4.5, -6], [5.0, -6],[5.0, -5.5], [5.0, -5.0], [5.0, -4.5], [5.0, -4.0], [5.0, -3.5], [5.0, -3.0], [5.0, -2.5], [5.0, -2.0], [5.0, -1.5], [5.0, -1.0], [5.0, -0.5], [5.0, 0.0], [5.0, 0.5], [5.0, 1.0], [5.0, 1.5], [5.0, 2.0], [5.0, 2.5], [5.0, 3.0],[4.5, 3.0], [4.0, 3.0], [3.5, 3.0], [3.0, 3.0], [2.5, 3.0], [2.0, 3.0], [1.5, 3.0], [1.0, 3.0], [0.5, 3.0], [0.0, 3.0], [-0.5, 3.0], [-1.0, 3.0], [-1.5, 3.0], [-2.0, 3.0], [-2.5, 3.0], [-3.0, 3.0], [-3.5, 3.0], [-4.0, 3.0], [-4.0, 2.5], [-4.0, 2.0], [-4.0, 1.5], [-4.0, 1.0], [-4.0, 0.5], [-4.0, 0.0], [-4.0, -0.5], [-4.0, -1.0], [-4.0, -1.5], [-4.0, -2.0], [-4.0, -2.5], [-4.0, -3.0], [-4.0, -3.5], [-4.0, -4.0], [-4.0, -4.5], [-4.0, -5.0], [-4.0, -5.5], [-4.0, -6.0]]

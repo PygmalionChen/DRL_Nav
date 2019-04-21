@@ -189,7 +189,7 @@ class DDPG(object):
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=1000)
         # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/SingleGood/model_38750.ckpt")
-        self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/pddpg/models/toPoints/model_53000.ckpt")   # 选了toPoint的预训练模型载入
+        # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/pddpg/models/toPoints/model_53000.ckpt")   # 选了toPoint的预训练模型载入
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/treasure/logs/PDDPG_formation/2019-03-09_23:20/models/model_85000.ckpt")   # 选了toPoint的预训练模型载入后训练一晚上效果最好的参数模型载入
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/treasure/logs/PDDPG_formation/2019-03-20_00:49/models/model_80000.ckpt")
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/treasure/logs/PDDPG_formation/2019-03-20_23:28/models/model_680000.ckpt")
@@ -356,8 +356,8 @@ class DDPG(object):
 
 ###############################  training  ####################################
 
-# env = gym.make('PDDPGEnv-v0')
-env = gym.make('formDDPGEnv-v0')
+env = gym.make('DDPGEnv-v0')
+# env = gym.make('formDDPGEnv-v0')
 env.seed(2)
 s_dim = 180 # 均值滤波以后的激光雷达数据,原始数据720维
 a_dim = 2   # 线速度 角速度
