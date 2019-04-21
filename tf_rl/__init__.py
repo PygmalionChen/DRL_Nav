@@ -106,7 +106,7 @@ register(
     entry_point='tf_rl.envs:MaddpgEnv'
 )
 register(
-    id='PDDPGEnv-v0',
+    id='DDPGEnv-v0',
     entry_point='tf_rl.envs:DDPGEnv'
 )
 register(

@@ -41,7 +41,7 @@ class Block:
 class DDPGEnv(gazebo_env.GazeboEnv):
     def __init__(self):
         # Launch the simulation with the given launchfile name
-        gazebo_env.GazeboEnv.__init__(self, "/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/formation.launch")
+        gazebo_env.GazeboEnv.__init__(self, "/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl/envs/assets/launch/formation.launch")
         self.vel_pub = []
         # /home/szz/tf_rl/tf_rl/envs/assets/launch/one_robot_world.launch
         self.max_range_dis = 10
