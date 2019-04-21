@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*- -
-# 20181026 测试不同数量
-# 20190121 加上到达目标后的朝向控制
+
 import tensorflow as tf
 import numpy as np
 import gym
@@ -350,7 +349,7 @@ class DDPG(object):
 
 ###############################  training  ####################################
 
-env = gym.make('PDDPGEnv-v0')
+env = gym.make('DDPGEnv-v0')
 # env = gym.make('formDDPGEnv-v0')
 env.seed(2)
 s_dim = 180
