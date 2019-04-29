@@ -29,8 +29,8 @@
     <!--<arg name="world_name" value="/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl/envs/assets/worlds/maddpg1block.world"/>-->
     <arg name="world_name" value="/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl/envs/assets/worlds/ddpg3Block.world"/>
   </include>
-  <include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/robots8_formation.launch"/>
-  <!--<include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/robots4_formation.launch"/>-->
+  <!--<include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/robots8_formation.launch"/>-->
+  <include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/robots4_formation.launch"/>
 
   <!--<node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 0 robot0_tf/odom robot1_tf/odom 10" />-->
 

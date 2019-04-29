@@ -32,8 +32,8 @@ LR_A = 0.0001  # learning rate for actor
 LR_C = 0.0002  # learning rate for critic
 GAMMA = 0.95  # reward discount
 TAU = 0.01  # soft replacement
-MEMORY_CAPACITY = 100000
-BATCH_SIZE = 256
+MEMORY_CAPACITY = 10000
+BATCH_SIZE =  128# 256
 START_LEARN = 50000
 nor = 4  # number of robots
 
@@ -105,11 +105,9 @@ class Memory(object):  # stored as ( s, a, r, s_ ) in SumTree
         self.tree.add(max_p, transition)  # set the max p for new p
 
     def sample(self, n, update=True):
-        b_idx, b_memory, ISWeights = np.empty((n,), dtype=np.int32), np.empty((n, self.tree.data[0].size)), np.empty(
-            (n, 1))
+        b_idx, b_memory, ISWeights = np.empty((n,), dtype=np.int32), np.empty((n, self.tree.data[0].size)), np.empty((n, 1))
         pri_seg = self.tree.total_p / n  # priority segment
         self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])  # max = 1
-
         min_prob = np.min(self.tree.tree[-self.tree.capacity:]) / self.tree.total_p  # for later calculate ISweight
         if update:
             for i in range(n):
@@ -159,7 +157,7 @@ class DDPG(object):
         self.out_dir = os.path.abspath(os.path.join(save_path, timestamp))
 
         with tf.variable_scope('Actor'):
-            self.a = self._build_a(self.S, self.P, scope='eval', trainable=True)
+            self.a = self._build_a(self.  S, self.P, scope='eval', trainable=True)
             a_ = self._build_a(self.S_, self.P_, scope='target', trainable=False)
         with tf.variable_scope('Critic'):
             q = self._build_c(self.S, self.P, self.a, scope='eval', trainable=True)
@@ -353,62 +351,51 @@ class DDPG(object):
                                         bias_initializer=init_b, name='a', trainable=trainable)
         return q
 
-
 ###############################  training  ####################################
-
-env = gym.make('DDPGEnv-v0')
-# env = gym.make('formDDPGEnv-v0')
+# env = gym.make('DDPGEnv-v0')
+env = gym.make('formDDPGEnv-v0')
 env.seed(2)
-s_dim = 180 # 均值滤波以后的激光雷达数据,原始数据720维
+s_dim = 180  # 均值滤波以后的激光雷达数据,原始数据720维
 a_dim = 2   # 线速度 角速度
-p_dim = nor + 3   # 添加距离目标点的角度     # 移动机器人的参数空间 4 [goal_dis, theta_error, linear.x, angular.z]
-ddpg = DDPG(a_dim, s_dim, p_dim)
-
+p_dim = nor + 3   # 添加距离目标点的角度 # 移动机器人的参数空间 4 [goal_dis, theta_error, linear.x, angular.z]
 var = 0.4  # control exploration
 t1 = time.time()
 total_step = 0
 ep_count = 0
-NewGoal = False
+ddpg = DDPG(a_dim, s_dim, p_dim)
 # env.get_all_init_states() #获取机器人初始位置
 first = True
 reward_list = []
 course_count = 0
-c,d= 4,3
-# 另一个世界
-# for i in range(MAX_EPISODES):
 for i in trange(MAX_EPISODES):
     env._reset()
     ep_reward = 0.
     x1 = 0
     y1 = 0
     step = 0  # count the steps
-    # goal = [[c - 1, d + 1], [c, d + 1], [c + 1, d + 1], [c - 1, d], [c + 1, d], [c - 1, d - 1],
-    #         [c, d - 1], [c + 1, d - 1]]
-    goal = [[c - 1,  d + 1], [c + 1, d + 1], [c - 1, d - 1], [c + 1, d - 1]]
     j = 0
+    # 间隔50个 episode 调整 course 难度
+    # 课程学习方式 # 初始中心点(-4,-7)
+    # course_goal = [[-3, -4], [-3, 0], [-2, 2], [0, 2], [4, 3], [0, -6], [3, -6], [6, -3], [4, 3]]
+    course_goal = [[-3, -4], [-2, -2], [0, 0], [2, 2], [4, 4]]
+    c, d = course_goal[course_count % 5]
+    print('goal center is x: %f, y: %f' % (c, d))
+    goal = [[c - 1, d + 1], [c + 1, d + 1], [c - 1, d - 1], [c + 1, d - 1]]
+    if i % 50 == 0:
+        course_count += 1
+    else:
+        pass
     a = np.zeros([nor, 2])
     s, p, r, done = env._step(a, goal, first)
     first = False
     va_math = 0.
     var *= .9998
-    # success_num = 0
-    # fail_num = 0
     # print("Step: ",step)
-    # 间隔5个 episode 调整 course 难度
-    if MAX_EPISODES % 5 == 0:
-        NewGoal = True
-        course_count += 1
-        ## 课程学习方式     # 初始中心点(-4,-7)
-        course_goal = [[4, 3], [-3, -4], [-3, 0], [-2, 2], [0, 2], [4, 3], [0, -6], [3, -6], [6, -3], [4, 3]]
-        c, d = course_goal[course_count % 9]
-        print('goal center is x: %f, y: %f' % (c, d))
-        goal = [[c - 1, d + 1], [c + 1, d + 1], [c - 1, d - 1], [c + 1, d - 1]]
-    else:
-        NewGoal = False
     # goal = goal + (np.random.rand(2) - 0.5)  # 为训练部分的目标点添加一定的随机性
     while (j < MAX_GOAL_STEPS):  # and (success_num + fail_num <= 100):
         # a = ddpg.choose_action(s/10, p)
         a = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
+        # print("Action:",a) #  list with (8,2) shape.
         a[:, 0] = np.clip(np.random.normal(a[:, 0], var), 0, 1)
         a[:, 1] = np.clip(np.random.normal(a[:, 1], var), -1, 1)
         ## 多控制器切换
@@ -436,17 +423,9 @@ for i in trange(MAX_EPISODES):
         #                 a[x,1] = -p[x][1] / abs(p[x][1]) * 0.2
         #                 a[x,0] = 0.1
         s_, p_, r, done = env._step(a, goal)
-        if all(done):   # NewGoal and
-            ## 随机目标点训练
-            # print('initial done')
-            # c, d = (np.random.rand(2) - 0.5) * 16  # the center of goal
-            # # -2,1  3,1
-            # while ((c>-2 and c<5) and (d<1 and d>-5)) or ((c>5 or c<-4) or (d>3 or d<-6)):
-            #     c, d = (np.random.rand(2) - 0.5) * 16
-            # # goal = [[c - 1, d + 1], [c, d + 1], [c + 1, d + 1], [c - 1, d], [c + 1, d], [c - 1, d - 1],
-            # # [c, d - 1], [c + 1, d - 1]]
-            # goal = [[c - 1, d + 1], [c + 1, d + 1], [c - 1, d - 1], [c + 1, d - 1]]
-            goal = goal + (np.random.rand(2) - 0.5)  # 为训练部分的目标点添加一定的随机性
+        # if all(done):
+        #     ## 随机目标点训练
+        #     goal = goal + (np.random.rand(2) - 0.5)  # 为训练部分的目标点添加一定的随机性
         for rn in range(nor):
             ddpg.store_transition(s[rn], p[rn], a[rn], r[rn], s_[rn], p_[rn])
             total_step += 1
@@ -460,7 +439,7 @@ for i in trange(MAX_EPISODES):
         # sum(dis)
         step += 1
         j += 1
-        if j % 10 == 0 and total_step >= MEMORY_CAPACITY:
+        if j % 10 == 0 and total_step >= MEMORY_CAPACITY:  # if j % 10 == 0 and total_step >= MEMORY_CAPACITY:
             ddpg.learn(True)
         if j == MAX_GOAL_STEPS - 1:
             # arrive_rate = success_num / (max(success_num + fail_num, 1))
@@ -475,10 +454,8 @@ for i in trange(MAX_EPISODES):
             print('Episode:', i+1, 'step: ', step, ' Reward_sum: %.4f' % ep_reward, 'Explore: %.2f' % var)
             reward_list.append(ep_reward)
             break
-    if i >= 20:
-        # 为何20次episode以后才存？
-        # print('arrive_rate = %d %%' % (sum(arrive_list)/len(arrive_list)))
-        # arrive_list.remove(arrive_list[0])
+    if i >= 20: # 20 是滑动窗口的大小. 也就是20次存一次取avg_reward
+        print("reward_list[]:",reward_list)
         reward_list.remove(reward_list[0])
         if (i+1) % 20 == 0:
             smma = tf.Summary()

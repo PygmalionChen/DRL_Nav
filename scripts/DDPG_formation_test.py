@@ -349,8 +349,8 @@ class DDPG(object):
 
 ###############################  training  ####################################
 
-env = gym.make('DDPGEnv-v0')
-# env = gym.make('formDDPGEnv-v0')
+# env = gym.make('DDPGEnv-v0')
+env = gym.make('formDDPGEnv-v0')
 env.seed(2)
 s_dim = 180
 a_dim = 2

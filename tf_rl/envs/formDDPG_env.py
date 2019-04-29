@@ -43,7 +43,7 @@ class Block:
 class formDDPGEnv(gazebo_env.GazeboEnv):
     def __init__(self):
         # Launch the simulation with the given launchfile name
-        gazebo_env.GazeboEnv.__init__(self, "/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/formation.launch")
+        gazebo_env.GazeboEnv.__init__(self, "/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl/envs/assets/launch/formation.launch")
         self.vel_pub = []
         # /home/szz/tf_rl/tf_rl/envs/assets/launch/one_robot_world.launch
         self.max_range_dis = 10
@@ -51,10 +51,10 @@ class formDDPGEnv(gazebo_env.GazeboEnv):
         self.vel_pub.append(rospy.Publisher('/robot1/cmd_vel', Twist, queue_size=5))
         self.vel_pub.append(rospy.Publisher('/robot2/cmd_vel', Twist, queue_size=5))
         self.vel_pub.append(rospy.Publisher('/robot3/cmd_vel', Twist, queue_size=5))
-        self.vel_pub.append(rospy.Publisher('/robot4/cmd_vel', Twist, queue_size=5))
-        self.vel_pub.append(rospy.Publisher('/robot5/cmd_vel', Twist, queue_size=5))
-        self.vel_pub.append(rospy.Publisher('/robot6/cmd_vel', Twist, queue_size=5))
-        self.vel_pub.append(rospy.Publisher('/robot7/cmd_vel', Twist, queue_size=5))
+        # self.vel_pub.append(rospy.Publisher('/robot4/cmd_vel', Twist, queue_size=5))
+        # self.vel_pub.append(rospy.Publisher('/robot5/cmd_vel', Twist, queue_size=5))
+        # self.vel_pub.append(rospy.Publisher('/robot6/cmd_vel', Twist, queue_size=5))
+        # self.vel_pub.append(rospy.Publisher('/robot7/cmd_vel', Twist, queue_size=5))
         self.setState = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
         self.getState = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
@@ -134,6 +134,7 @@ class formDDPGEnv(gazebo_env.GazeboEnv):
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
+
     def CalDist(self, position1, position2):
         LenDist = math.sqrt((position1.x - position2.x) * (position1.x - position2.x) + (position1.y - position2.y) * (position1.y - position2.y))
         return LenDist
@@ -177,6 +178,7 @@ class formDDPGEnv(gazebo_env.GazeboEnv):
 
     def _step(self, action, goal, first=False):
         # 单下划线的方式便于跳转到函数.不加下划线能够直接调用,因为当前类的成员函数能够覆盖同名的父类成员函数.
+        # print("Here we use DRL_Nav formation env.")
         vcmds = []
         for i in range(self.nor):  # num of robots
             vcmds.append(Twist())   # 简易差分驱动机器人,只考虑x方向线速度和z方向角速度.
@@ -195,7 +197,7 @@ class formDDPGEnv(gazebo_env.GazeboEnv):
             for i in range(self.nor):
                 _, _, Yaw = self.GetEuler(i)
                 self.YawList.append(Yaw)
-            print("Yawlist:", self.YawList)
+            # print("Yawlist:", self.YawList)
 
         for i in range(self.nor):
             self.vel_pub[i].publish(vcmds[i])
@@ -240,7 +242,7 @@ class formDDPGEnv(gazebo_env.GazeboEnv):
                 self.pong_list[i] = 0
             elif pong:
                 # 碰撞处理只处理单个持续碰撞才重置
-                reward_list.append(-1)
+                reward_list.append(-5)
                 self.pong_list[i] += 1
                 if self.pong_list[i] >= 10:
                     # self.resetState(i)  # 重置出问题的那个
@@ -269,13 +271,13 @@ class formDDPGEnv(gazebo_env.GazeboEnv):
                 reward_list[i] += 0.3
             # 根据距离信息粗略给定一个动态Reward.
             if dis_matrix[i].min() < 2 and dis_matrix[i].min() >= 1.5:
-                reward_list[i] -= 0.05
+                reward_list[i] -= 0.5
             elif dis_matrix[i].min() < 1.5 and dis_matrix[i].min() >= 1:
-                reward_list[i] -= 0.1
+                reward_list[i] -= 1
             elif dis_matrix[i].min() < 1 and dis_matrix[i].min() >= 0.5:
-                reward_list[i] -= 0.15
+                reward_list[i] -= 1.5
             elif dis_matrix[i].min() < 0.5:
-                reward_list[i] -= 0.2
+                reward_list[i] -= 2
 
             #  到达检测
             if dis_matrix[i, i] < 0.03:
