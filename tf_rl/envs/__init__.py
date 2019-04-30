@@ -20,3 +20,4 @@ from tf_rl.envs.multi_goal_env import GazeboMultiGoalEnv8
 from tf_rl.envs.single_DDPG_env import SingleDDPGEnv
 from tf_rl.envs.DDPG_env import DDPGEnv
 from tf_rl.envs.formDDPG_env import formDDPGEnv
+from tf_rl.envs.DDPG_1Goenv import DDPGEnv1Go

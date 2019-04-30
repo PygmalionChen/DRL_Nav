@@ -251,7 +251,7 @@ class formDDPGEnv(gazebo_env.GazeboEnv):
             else:
                 self._reset()
             #  防止机器人以极低的速度运行
-            if abs(vcmds[i].linear.x) < 0.3:
+            if abs(vcmds[i].linear.x) < 0.5:
                 reward_list[i] -= 0.3
             if abs(vcmds[i].angular.z) > 0.6:   # 转向太快的惩罚？
                 # print("vcmds[i].angular.z:", vcmds[i].angular.z)
