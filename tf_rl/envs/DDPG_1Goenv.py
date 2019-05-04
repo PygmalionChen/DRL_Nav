@@ -4,7 +4,7 @@ import rospy
 import math
 import time
 import numpy as np
-np.random.seed(1)
+np.random.seed(1) # 固定随机数种子
 from nav_msgs.msg import Odometry
 from tf_rl.envs import gazebo_env
 from geometry_msgs.msg import Twist, Pose, Quaternion, Vector3, Point

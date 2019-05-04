@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*- -
-# 20181026 测试不同数量
-# 20190122 目标点的reward独立，加上编队的约束
+
 import tensorflow as tf
 import numpy as np
 import gym
@@ -188,9 +187,7 @@ class DDPG(object):
         self.saver = tf.train.Saver(max_to_keep=1000)
         # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/SingleGood/model_38750.ckpt")
         # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/pddpg/models/toPoints/model_53000.ckpt")   # 选了toPoint的预训练模型载入
-        # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/treasure/logs/PDDPG_formation/2019-03-09_23:20/models/model_85000.ckpt")   # 选了toPoint的预训练模型载入后训练一晚上效果最好的参数模型载入
-        # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/treasure/logs/PDDPG_formation/2019-03-20_00:49/models/model_80000.ckpt")
-        # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/treasure/logs/PDDPG_formation/2019-03-20_23:28/models/model_680000.ckpt")
+
         self.merged = tf.summary.merge_all()
         self.loss_writer = tf.summary.FileWriter(self.out_dir, self.sess.graph)
 

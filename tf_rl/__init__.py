@@ -113,3 +113,7 @@ register(
     id='formDDPGEnv-v0',
     entry_point='tf_rl.envs:formDDPGEnv'
 )
+register(
+    id='DDPG1Go-v0',
+    entry_point='tf_rl.envs:DDPGEnv1Go'
+)
