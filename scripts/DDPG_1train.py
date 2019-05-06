@@ -381,6 +381,7 @@ for i in trange(MAX_EPISODES):
     # else:
     #     pass
     goal = np.random.rand(2) * 6
+    print("Goal is: ", goal)
     action = np.zeros([nor, 2])
     s, p, r, done = env._step(action, goal, first)
     first = False
@@ -419,11 +420,11 @@ for i in trange(MAX_EPISODES):
         #                 a[x,1] = -p[x][1] / abs(p[x][1]) * 0.2
         #                 a[x,0] = 0.1
         s_, p_, r, done = env._step(action, goal)
-        print("Goal is: ",goal)
+
         if done:
             # 一个episode内到达则重置目标点.
-            goal = np.random.rand(nor, 2) * 6
-
+            goal = np.random.rand(2) * 6
+            print("Goal is: ", goal)
         ddpg.store_transition(s, p, action, r, s_, p_)
         total_step += 1
         if total_step == MEMORY_CAPACITY:

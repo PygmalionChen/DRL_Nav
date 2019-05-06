@@ -152,24 +152,34 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
         reward.append(goal_dis_reward)
         state, collision = self.calculate_observation(np.array(self.listen_class.range_list[0]))
         state_list.append(state)
-
+        # print("angularV: ",abs(vcmds[0].angular.z))  # [0,1]
         vw = self.listen_class.odom_list[0].twist.twist.angular.z
         vl = self.listen_class.odom_list[0].twist.twist.linear.x
         theta = self.cal_theta(goal)
         param_list.append(np.array([goal_dis, vw, vl, theta]))  # nor + 3
         # goal_dis = goal_matrix[i, i]
         # goal_dis = np.min(goal_matrix[i, :])  # 得到每个机器人离最近目标点的距离
+        if abs(vcmds[0].linear.x) < 0.3:
+            reward[0] -= 0.5
+        if abs(vcmds[0].angular.z) > 0.6:  # 转向快的惩罚
+            reward[0] -= abs(vcmds[0].angular.z)
         if not (done_list or collision):
-            # reward_list.append(-(goal_dis/3) ** 2)
-            # reward_list.append(goal_dis_sum_reward)
             pass
         elif collision:
             # 碰撞处理只处理单个持续碰撞才重置
-            reward[0] -= 1
+            reward[0] -= 2
             self.resetState(0)
-        if goal_dis < 0.3/self.max_range_dis:
+        # 根据距离信息粗略给定一个动态Reward, 并进行到达检测.
+        if goal_dis < 0.03:
             done_list = True
-            reward[0] += 1
+            reward[0] += 5
+        elif goal_dis < 0.2 and goal_dis >= 0.03:
+            reward[0] -= 0.5
+        elif goal_dis < 0.5 and goal_dis >= 0.2:
+            reward[0] -= 1
+        elif goal_dis < 1 and goal_dis >= 0.5:
+            reward[0] -= 1.5
+
         return np.array(state_list), np.array(param_list), np.array(reward), done_list
 
     def get_all_init_states(self):  # 在前期调用一次，获取机器人的初始位置
