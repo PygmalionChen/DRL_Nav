@@ -22,9 +22,9 @@
     <arg name="gui" value="$(arg gui)" />
     <arg name="use_sim_time" value="$(arg use_sim_time)" />
     <arg name="headless" value="$(arg headless)" />
-    <arg name="world_name" value="/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl/envs/assets/worlds/ddpg3Block.world"/>
-
+    <!--<arg name="world_name" value="/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl/envs/assets/worlds/ddpg3Block.world"/>-->
+    <arg name="world_name" value="/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl/envs/assets/worlds/maddpg1block.world"/>
   </include>
-    <include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/robots_1go.launch"/>
+    <include file="/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl/envs/assets/launch/robots_1go.launch"/>
 
 </launch>

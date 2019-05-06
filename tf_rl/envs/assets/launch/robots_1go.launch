@@ -4,7 +4,7 @@
   <group ns="robot0">
     <param name="tf_prefix" value="robot0_tf" />
     <param name="robot_description" command="$(find xacro)/xacro.py '$(find mastering_ros_robot_description_pkg)/urdf/diff_wheeled_robot0.xacro'" />
-    <include file="/home/pygmalionchen/PycharmProjects/treasure/tf_rl/envs/assets/launch/one_robot.launch" >
+    <include file="/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl/envs/assets/launch/one_robot.launch" >
       <arg name="init_pose" value="-x -4 -y -7 -z 0 -R 0 -P 0 -Y 0" />
       <arg name="robot_name"  value="robot0" />
     </include>

@@ -140,7 +140,8 @@ class DDPG(object):
         self.memory = Memory(MEMORY_CAPACITY)
         self.pointer = 0
         config = tf.ConfigProto()
-        config.gpu_options.allow_growth = True
+        # config.gpu_options.allow_growth = True  # 增长式分配的方式容易造成较多的内存碎片.
+        config.gpu_options.per_process_gpu_memory_fraction = 0.6
         # session = tf.Session(config=config, ...)
         self.sess = tf.Session(config=config)
 
@@ -185,7 +186,6 @@ class DDPG(object):
 
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=1000)
-        # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/SingleGood/model_38750.ckpt")
         # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/pddpg/models/toPoints/model_53000.ckpt")   # 选了toPoint的预训练模型载入
 
         self.merged = tf.summary.merge_all()
@@ -372,17 +372,17 @@ for i in trange(MAX_EPISODES):
     # 间隔50个 episode 调整 course 难度
     # 课程学习方式 # 初始中心点(-4,-7)
     # course_goal = [[-3, -4], [-3, 0], [-2, 2], [0, 2], [4, 3], [0, -6], [3, -6], [6, -3], [4, 3]]
-    course_goal = [[-3, -4], [-2, -2], [0, 0], [2, 2], [4, 4]]
-    c, d = course_goal[course_count % 5]
-    print('goal center is x: %f, y: %f' % (c, d))
+    # c, d = course_goal[course_count % 5]
+    # print('goal center is x: %f, y: %f' % (c, d))
     # goal = [[c - 1, d + 1], [c + 1, d + 1], [c - 1, d - 1], [c + 1, d - 1]]
-    goal = [c, d]
-    if i % 50 == 0:
-        course_count += 1
-    else:
-        pass
-    a = np.zeros([nor, 2])
-    s, p, r, done = env._step(a, goal, first)
+    # goal = [c, d]
+    # if i % 50 == 0:
+    #     course_count += 1
+    # else:
+    #     pass
+    goal = np.random.rand(2) * 6
+    action = np.zeros([nor, 2])
+    s, p, r, done = env._step(action, goal, first)
     first = False
     va_math = 0.
     var *= .9998
@@ -390,10 +390,10 @@ for i in trange(MAX_EPISODES):
     # goal = goal + (np.random.rand(2) - 0.5)  # 为训练部分的目标点添加一定的随机性
     while (j < MAX_GOAL_STEPS):  # and (success_num + fail_num <= 100):
         # a = ddpg.choose_action(s/10, p)
-        a = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
+        action = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
         # print("Action:",a) #  list with (8,2) shape.
-        a[:, 0] = np.clip(np.random.normal(a[:, 0], var), 0, 1)
-        a[:, 1] = np.clip(np.random.normal(a[:, 1], var), -1, 1)
+        action[:, 0] = np.clip(np.random.normal(action[:, 0], var), 0, 1)
+        action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -1, 1)
         ## 多控制器切换
         # for x in range(nor):
         #     if np.random.rand() < var/2:
@@ -418,17 +418,19 @@ for i in trange(MAX_EPISODES):
         #             else:
         #                 a[x,1] = -p[x][1] / abs(p[x][1]) * 0.2
         #                 a[x,0] = 0.1
-        s_, p_, r, done = env._step(a, goal)
-        # if all(done):
-        #     ## 随机目标点训练
-        #     goal = goal + (np.random.rand(2) - 0.5)  # 为训练部分的目标点添加一定的随机性
-        for rn in range(nor):
-            ddpg.store_transition(s[rn], p[rn], a[rn], r[rn], s_[rn], p_[rn])
-            total_step += 1
-            if total_step == MEMORY_CAPACITY:
-                with open(ddpg.out_dir + '/memory_tree.pkl', 'wb') as fn:
-                    pickle.dump(ddpg.memory.tree, fn, True)
-                print("memory full")
+        s_, p_, r, done = env._step(action, goal)
+        print("Goal is: ",goal)
+        if done:
+            # 一个episode内到达则重置目标点.
+            goal = np.random.rand(nor, 2) * 6
+
+        ddpg.store_transition(s, p, action, r, s_, p_)
+        total_step += 1
+        if total_step == MEMORY_CAPACITY:
+            with open(ddpg.out_dir + '/memory_tree.pkl', 'wb') as fn:
+                pickle.dump(ddpg.memory.tree, fn, True)
+            print("memory full")
+        # state transition
         p = p_.copy()
         s = s_.copy()
         ep_reward += float(sum(r))

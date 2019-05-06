@@ -56,14 +56,14 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
         self.reward_range = (-np.inf, np.inf)
         self._seed()
         self.listen_class = Listen_class(self.nor)
-        self.pong_list = np.zeros(self.nor)  # 因为实际测试的时候可能不能因为碰撞就马上重置
+        # self.pong_list = np.zeros(self.nor)  # 因为实际测试的时候可能不能因为碰撞就马上重置
 
         self.markerPub = rospy.Publisher('/model_marker', Marker, queue_size=10)
         self.init_vel()
         self.markerPub.publish(self.vel)
 
     def init_vel(self):
-        # 此函数作用
+        # 此函数作用？
         vel = Marker()
         vel.header.frame_id = "odom"
         vel.header.stamp = rospy.Time.now()
@@ -93,40 +93,29 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
 
         self.vel = vel
 
-    def calculate_observation(self, data1):  # determine whether there is a collision
+    def calculate_observation(self, data):  # determine whether there is a collision
         min_range = 0.3
-        pong = False
-        where_are_inf = np.isinf(data1)
-        data1[where_are_inf] = self.max_range_dis  # 最大距离
-        for i, item in enumerate(data1):
-            if min_range > data1[i] > 0:
-                pong = True
-            data1[i] = min(self.max_range_dis, data1[i])
+        collision = False
+        where_are_inf = np.isinf(data)
+        data[where_are_inf] = self.max_range_dis  # 最大距离
+        for i, item in enumerate(data):
+            if min_range > data[i] > 0:
+                collision = True
+            data[i] = min(self.max_range_dis, data[i])
         # ranges = np.min(data1.reshape(36, 20), 1) / self.max_range_dis  # 使用36维激光，用最小值保证安全，对应网络应该可以简单点
-        ranges = np.mean((np.array(data1)).reshape(180, 4), 1) / self.max_range_dis
-        return ranges, pong
-
-    def reward_fun(self, dis):
-        dis_sum = 0
-        while(dis.size>1):
-            dis_sum += (np.min(dis)/5)**2   # 为何吧最小值平方
-            index = np.argmin(dis)
-            r, c = index/dis.shape[0], index%dis.shape[0]
-            dis = np.delete(dis, r, 0)
-            dis = np.delete(dis, c, 1)
-        dis_sum += (dis[0, 0]/5)**2
-        return dis_sum
+        ranges = np.mean((np.array(data)).reshape(180, 4), 1) / self.max_range_dis   # 720 dim filter to 180 dim
+        return ranges, collision
 
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def cal_theta(self, goal, i, j):
-        theta = math.atan2(2 * self.listen_class.odom_list[i].pose.pose.orientation.z *
-                           self.listen_class.odom_list[i].pose.pose.orientation.w,
-                           1 - 2 * (self.listen_class.odom_list[i].pose.pose.orientation.z ** 2)) - \
-                math.atan2(goal[j][1] - self.listen_class.odom_list[i].pose.pose.position.y,
-                           goal[j][0] - self.listen_class.odom_list[i].pose.pose.position.x)
+    def cal_theta(self, goal):
+        theta = math.atan2(2 * self.listen_class.odom_list[0].pose.pose.orientation.z *
+                           self.listen_class.odom_list[0].pose.pose.orientation.w,
+                           1 - 2 * (self.listen_class.odom_list[0].pose.pose.orientation.z ** 2)) - \
+                math.atan2(goal[1] - self.listen_class.odom_list[0].pose.pose.position.y,
+                           goal[0] - self.listen_class.odom_list[0].pose.pose.position.x)
         if theta > 3.14:
             theta -= 6.28
         elif theta < -3.14:
@@ -136,10 +125,9 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
 
     def _step(self, action, goal, first=False):
         vcmds = []
-        for i in range(self.nor):  # num of robots
-            vcmds.append(Twist())
-            vcmds[i].linear.x = action[i][0]
-            vcmds[i].angular.z = action[i][1]
+        vcmds.append(Twist())
+        vcmds[0].linear.x = action[0][0]
+        vcmds[0].angular.z = action[0][1]
         rospy.wait_for_service('/gazebo/unpause_physics')
         try:
             self.unpause()
@@ -148,8 +136,7 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
         if first:
             rospy.sleep(2)
             self.get_all_init_states()
-        for i in range(self.nor):
-            self.vel_pub[i].publish(vcmds[i])
+        self.vel_pub[0].publish(vcmds[0])
         rospy.sleep(0.1/10)  # 指令要持续一段时间，注意这是仿真时间，真实时间要考虑仿真速率比
         rospy.wait_for_service('/gazebo/pause_physics')
         try:
@@ -158,72 +145,32 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
             print("/gazebo/pause_physics service call failed")
         state_list = []
         param_list = []
-        done_list = []
-        goal_matrix = np.zeros([self.nor, self.nor])
-        formation_list = []
-        # pong_list = []
-        for i in range(self.nor):
-            for j in range(self.nor):  # 对目标点i，计算离它最近的机器人j的距离
-                goal_matrix[i][j] = min(self.max_range_dis,
-                                        np.sqrt((self.listen_class.odom_list[i].pose.pose.position.x - goal[j][0]) ** 2
-                                                + (self.listen_class.odom_list[i].pose.pose.position.y - goal[j][1]) ** 2))
-        goal_matrix = goal_matrix / self.max_range_dis  # 归一化（0,1）
-        goal_dis_sum_reward = - self.reward_fun(goal_matrix.copy())  # 距离和，每个机器人都要加上的reward
-        reward_list = [goal_dis_sum_reward for _ in range(self.nor)]
-        for i in range(self.nor):
-            state, pong = self.calculate_observation(np.array(self.listen_class.range_list[i]))
-            state_list.append(state)
-            goal_dis = goal_matrix[i, i]
-            # goal_dis = np.min(goal_matrix[i, :])  # 得到每个机器人离最近目标点的距离
-            done_list.append(False)
-            if not (done_list[i] or pong):
-                # reward_list.append(-(goal_dis/3) ** 2)
-                # reward_list.append(goal_dis_sum_reward)
-                self.pong_list[i] = 0
-            elif pong:
-                # 碰撞处理只处理单个持续碰撞才重置
-                reward_list[i] -= 1
-                self.pong_list[i]+=1
-                if self.pong_list[i]>=20:
-                    self.resetState(i)
-                    self.pong_list[i] = 0
+        reward = []
+        done_list = False
+        goal_dis = np.sqrt((self.listen_class.odom_list[0].pose.pose.position.x - goal[0]) ** 2 + (self.listen_class.odom_list[0].pose.pose.position.y - goal[1]) ** 2) / self.max_range_dis  # 归一化目标距离
+        goal_dis_reward = - goal_dis * 10  # 距离惩罚
+        reward.append(goal_dis_reward)
+        state, collision = self.calculate_observation(np.array(self.listen_class.range_list[0]))
+        state_list.append(state)
 
-                # call set_model_state
-            # reward = reward - (1/min_range-0.2)
-            # if abs(vcmds[i].angular.z) > 0.6:
-            #     reward_list[i] -= 0.1 * abs(vcmds[i].angular.z)
-            # done threshold
-            if goal_dis < 0.3/self.max_range_dis:
-                done_list[i] = True
-                reward_list[i] += 1
-                # self.resetState(i)
-            #  此部分希望各个机器人能够相互处理角度？
-            if i == np.argmax(action[0,:]) or i == np.argmin(action[0,:]) or i == np.argmax(action[1,:]) or i == np.argmin(action[1,:]):
-                reward_list[i] -= 0.1
-            theta = self.cal_theta(goal, i, i)  # why i i ?
-            param_list.append(np.array([goal_dis, theta, self.listen_class.odom_list[i].twist.twist.linear.x,
-                                        self.listen_class.odom_list[i].twist.twist.angular.z]))
-            if i<3:
-                f_theta = self.cal_theta(goal, i, i+5)
-                if f_theta >0:
-                    f_theta -= 1
-                else:
-                    f_theta += 1
-            elif i>4:
-                f_theta = self.cal_theta(goal, i, i-5)
-            elif i==3:
-                f_theta = self.cal_theta(goal, i, i - 3)
-            else:
-                f_theta = self.cal_theta(goal, i, i - 2)
-            formation_list.append(f_theta)
-            if abs(f_theta)<0.1:
-                reward_list[i] += 0.1
-        # reward_res = reward_fun(goal_matrix)
-        # total_toc = time.time()
-        # print('time is %f'%(total_toc-total_tic))
-        return np.array(state_list), np.array(param_list), reward_list, done_list   #, formation_list  # , self.pong_list
-        # [xt, yt, q2, q3,q0,q1], [vl, va], {}
-
+        vw = self.listen_class.odom_list[0].twist.twist.angular.z
+        vl = self.listen_class.odom_list[0].twist.twist.linear.x
+        theta = self.cal_theta(goal)
+        param_list.append(np.array([goal_dis, vw, vl, theta]))  # nor + 3
+        # goal_dis = goal_matrix[i, i]
+        # goal_dis = np.min(goal_matrix[i, :])  # 得到每个机器人离最近目标点的距离
+        if not (done_list or collision):
+            # reward_list.append(-(goal_dis/3) ** 2)
+            # reward_list.append(goal_dis_sum_reward)
+            pass
+        elif collision:
+            # 碰撞处理只处理单个持续碰撞才重置
+            reward[0] -= 1
+            self.resetState(0)
+        if goal_dis < 0.3/self.max_range_dis:
+            done_list = True
+            reward[0] += 1
+        return np.array(state_list), np.array(param_list), np.array(reward), done_list
 
     def get_all_init_states(self):  # 在前期调用一次，获取机器人的初始位置
         # 这个循环是为了等所有机器人都加载完
