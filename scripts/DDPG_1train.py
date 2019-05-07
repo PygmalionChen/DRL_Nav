@@ -187,7 +187,6 @@ class DDPG(object):
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=1000)
         # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/pddpg/models/toPoints/model_53000.ckpt")   # 选了toPoint的预训练模型载入
-
         self.merged = tf.summary.merge_all()
         self.loss_writer = tf.summary.FileWriter(self.out_dir, self.sess.graph)
 
@@ -393,34 +392,33 @@ for i in trange(MAX_EPISODES):
         # a = ddpg.choose_action(s/10, p)
         action = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
         # print("Action:",a) #  list with (8,2) shape.
-        action[:, 0] = np.clip(np.random.normal(action[:, 0], var), 0, 1)
-        action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -1, 1)
+        action[:, 0] = np.clip(np.random.normal(action[:, 0], var), 0, 1)   # linear V
+        action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -1, 1)  # angular V
         ## 多控制器切换
-        # for x in range(nor):
-        #     if np.random.rand() < var/2:
-        #         if s[x].min() <= 0.1:  # obstacle avoidance
-        #             # 判定障碍物方位
-        #             if s.argmin() > len(s)/2:
-        #                 # a[1] = -abs(s.min()-0.1)/0.1
-        #                 a[x, 1] = np.clip(np.random.normal(-0.8, 0.2), -1, -0.7)
-        #             else:
-        #                 # a[1] = abs(s.min()-0.1) / 0.1
-        #                 a[x, 1] = np.clip(np.random.normal(0.8, 0.2), 0.7, 1)
-        #         else:
-        #             # 目标导航控制器
-        #             # 夹角大
-        #             if abs(p[x][1]) > 0.3:
-        #                 a[x,1] = -p[x][1] / abs(p[x][1]) * 0.7
-        #                 a[x,0] = 0.02
-        #             #  夹角小
-        #             elif abs(p[x][1]) < 0.4/3.14:
-        #                 a[x,1] = -p[x][1] / abs(p[x][1]) * 0.02
-        #                 a[x,0] = 0.6
-        #             else:
-        #                 a[x,1] = -p[x][1] / abs(p[x][1]) * 0.2
-        #                 a[x,0] = 0.1
-        s_, p_, r, done = env._step(action, goal)
+        if np.random.rand() < var/2:
+            if s[0].min() <= 0.2:  # obstacle avoidance
+                # 判定障碍物方位, 决定左右转
+                if s.argmin() > len(s)/2:
+                    # a[1] = -abs(s.min()-0.1)/0.1
+                    action[0, 1] = np.clip(np.random.normal(-0.8, 0.2), -1, -0.7)
+                else:
+                    # a[1] = abs(s.min()-0.1) / 0.1
+                    action[0, 1] = np.clip(np.random.normal(0.8, 0.2), 0.7, 1)
+            else:
+                # 目标导航控制器
+                # 夹角大
+                if abs(p[0][3]) > 0.6:
+                    action[0, 1] = - p[0][3] / abs(p[0][3]) * 0.7
+                    action[0, 0] = 0.1
+                #  夹角小
+                elif abs(p[0][3]) < 0.3:
+                    action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.2
+                    action[0, 0] = 0.5
+                else:
+                    action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.5
+                    action[0, 0] = 0.3
 
+        s_, p_, r, done = env._step(action, goal)
         if done:
             # 一个episode内到达则重置目标点.
             goal = np.random.rand(2) * 6
