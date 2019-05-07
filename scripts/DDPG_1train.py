@@ -352,7 +352,7 @@ env.seed(2)
 s_dim = 180  # 均值滤波以后的激光雷达数据,原始数据720维
 a_dim = 2   # 线速度 角速度
 p_dim = nor + 3   # 添加距离目标点的角度 # 移动机器人的参数空间 4 [goal_dis, theta_error, linear.x, angular.z]
-var = 0.4  # control exploration
+var = 0.8  # control exploration
 t1 = time.time()
 total_step = 0
 ep_count = 0
@@ -385,7 +385,7 @@ for i in trange(MAX_EPISODES):
     s, p, r, done = env._step(action, goal, first)
     first = False
     va_math = 0.
-    var *= .9998
+    var *= .9999
     # print("Step: ",step)
     # goal = goal + (np.random.rand(2) - 0.5)  # 为训练部分的目标点添加一定的随机性
     while (j < MAX_GOAL_STEPS):  # and (success_num + fail_num <= 100):
@@ -395,7 +395,7 @@ for i in trange(MAX_EPISODES):
         action[:, 0] = np.clip(np.random.normal(action[:, 0], var), 0, 1)   # linear V
         action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -1, 1)  # angular V
         ## 多控制器切换
-        if np.random.rand() < var/2:
+        if np.random.rand() < var:
             if s[0].min() <= 0.2:  # obstacle avoidance
                 # 判定障碍物方位, 决定左右转
                 if s.argmin() > len(s)/2:
