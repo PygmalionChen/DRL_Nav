@@ -353,7 +353,7 @@ env.seed(2)
 s_dim = 180  # 均值滤波以后的激光雷达数据,原始数据720维
 a_dim = 2   # 线速度 角速度
 p_dim = nor + 3   # 添加距离目标点的角度 # 移动机器人的参数空间 4 [goal_dis, theta_error, linear.x, angular.z]
-var = 0.71# 0.8  # control exploration
+var = 0.8# 0.8  # control exploration
 t1 = time.time()
 total_step = 0
 ep_count = 0
@@ -371,13 +371,14 @@ for i in trange(MAX_EPISODES):
     j = 0
     # 间隔50个 episode 调整 course 难度
     # 课程学习方式 # 初始中心点(-4,-7)
-    course_goal = [[6, -5], [3, -3], [-3, -2], [5, 2],]
+    # course_goal = [[6, -5], [3, -3], [-3, -2], [5, 2]]
+    course_goal = [[-1, -7], [2, -7], [6, -5], [3, -3], [-3, -2], [5, 2]]
     c, d = course_goal[course_count % 5]
-    if i % 5000 == 0:
+    if i % 1000 == 0:
         course_count += 1
     else:
         pass
-    goal = [c, d] + np.random.rand(2) * 2
+    goal = [c, d] + np.random.rand(2) * 1
     print('goal center is x: %f, y: %f' % (c, d))
     print("Goal is: ", goal)
     action = np.zeros([nor, 2])
@@ -391,11 +392,12 @@ for i in trange(MAX_EPISODES):
         # a = ddpg.choose_action(s/10, p)
         action = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
         # print("Action:",a) #  list with (8,2) shape.
+        # DDPG add the noise.
         action[:, 0] = np.clip(np.random.normal(action[:, 0], var), 0, 1)   # linear V
-        action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -1, 1)  # angular V
+        action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -0.5, 0.5)  # angular V
         ## 多控制器切换, 基本控制器有毒
         if np.random.rand() < var/2:
-            print("The basic Control Law.")
+            # print("The basic Control Law.")
             if s[0].min() <= 0.1:  # obstacle avoidance
                 # 判定障碍物方位, 决定左右转
                 if s.argmin() > len(s)/2:
@@ -427,13 +429,14 @@ for i in trange(MAX_EPISODES):
                 #     action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.5
                 #     action[0, 0] = 0.3
         else:
-            print("The DDPG Law.")
+            # print("The DDPG Law.")
             pass
         s_, p_, r, done = env._step(action, goal)
         if done:
             # 一个episode内到达则重置目标点.
-            goal = [c, d] + np.random.rand(2) * 2
-            print("Goal is: ", goal)
+            env.resetState(0)
+            goal = [c, d] + np.random.rand(2) * 1
+            print("New goal is: ", goal)
         ddpg.store_transition(s, p, action, r, s_, p_)
         total_step += 1
         if total_step == MEMORY_CAPACITY:
@@ -457,7 +460,7 @@ for i in trange(MAX_EPISODES):
             reward_list.append(ep_reward)
             break
     if i >= 20: # 20 是滑动窗口的大小. 也就是20次存一次取avg_reward
-        print("reward_list[]:",reward_list)
+        print("reward_list:",reward_list)
         reward_list.remove(reward_list[0])
         if (i+1) % 20 == 0:
             smma = tf.Summary()
