@@ -25,15 +25,14 @@ from gym import envs
 #####################  hyper parameters  ####################
 
 # MAX_EP_STEPS = 200
-MAX_EPISODES = 20000
-MAX_GOAL_STEPS = 2000  # 参考实际地图何时能走到去设置
+MAX_EPISODES = 20000 #20000
+MAX_GOAL_STEPS = 2500  # 参考实际地图何时能走到去设置
 LR_A = 0.0001  # learning rate for actor
 LR_C = 0.0002  # learning rate for critic
 GAMMA = 0.95  # reward discount
 TAU = 0.01  # soft replacement
 MEMORY_CAPACITY = 10000
 BATCH_SIZE =  128# 256
-START_LEARN = 50000
 nor = 1  # number of robots
 
 
@@ -153,11 +152,11 @@ class DDPG(object):
         self.R = tf.placeholder(tf.float32, [None, 1], 'r')
         self.loss_count = 0  # 用于绘制图线
 
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M')
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H_%M')
         self.out_dir = os.path.abspath(os.path.join(save_path, timestamp))
 
         with tf.variable_scope('Actor'):
-            self.a = self._build_a(self.  S, self.P, scope='eval', trainable=True)
+            self.a = self._build_a(self.S, self.P, scope='eval', trainable=True)
             a_ = self._build_a(self.S_, self.P_, scope='target', trainable=False)
         with tf.variable_scope('Critic'):
             q = self._build_c(self.S, self.P, self.a, scope='eval', trainable=True)
@@ -187,6 +186,8 @@ class DDPG(object):
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver(max_to_keep=1000)
         # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/pddpg/models/toPoints/model_53000.ckpt")   # 选了toPoint的预训练模型载入
+        # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-05-07_20:31/models/model_350000.ckpt")
+        self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-05-11/models/model_150000.ckpt")
         self.merged = tf.summary.merge_all()
         self.loss_writer = tf.summary.FileWriter(self.out_dir, self.sess.graph)
 
@@ -229,7 +230,7 @@ class DDPG(object):
                                               self.P_: bp_.reshape(bp.shape[0], self.p_dim)})
         self.loss_writer.add_summary(summary, self.loss_count)
         self.loss_count += 1
-        if self.loss_count % 5000 == 0:
+        if self.loss_count % 5000 == 0: # save the model for every 5000 count
             self.saver.save(self.sess,
                             os.path.abspath(os.path.join(self.out_dir, "models/model_%d.ckpt" % self.loss_count)))
 
@@ -352,7 +353,7 @@ env.seed(2)
 s_dim = 180  # 均值滤波以后的激光雷达数据,原始数据720维
 a_dim = 2   # 线速度 角速度
 p_dim = nor + 3   # 添加距离目标点的角度 # 移动机器人的参数空间 4 [goal_dis, theta_error, linear.x, angular.z]
-var = 0.8  # control exploration
+var = 0.71# 0.8  # control exploration
 t1 = time.time()
 total_step = 0
 ep_count = 0
@@ -370,22 +371,20 @@ for i in trange(MAX_EPISODES):
     j = 0
     # 间隔50个 episode 调整 course 难度
     # 课程学习方式 # 初始中心点(-4,-7)
-    # course_goal = [[-3, -4], [-3, 0], [-2, 2], [0, 2], [4, 3], [0, -6], [3, -6], [6, -3], [4, 3]]
-    # c, d = course_goal[course_count % 5]
-    # print('goal center is x: %f, y: %f' % (c, d))
-    # goal = [[c - 1, d + 1], [c + 1, d + 1], [c - 1, d - 1], [c + 1, d - 1]]
-    # goal = [c, d]
-    # if i % 50 == 0:
-    #     course_count += 1
-    # else:
-    #     pass
-    goal = np.random.rand(2) * 6
+    course_goal = [[6, -5], [3, -3], [-3, -2], [5, 2],]
+    c, d = course_goal[course_count % 5]
+    print('goal center is x: %f, y: %f' % (c, d))
+    if i % 5000 == 0:
+        course_count += 1
+    else:
+        pass
+    goal = [c, d] + np.random.rand(2) * 2
     print("Goal is: ", goal)
     action = np.zeros([nor, 2])
     s, p, r, done = env._step(action, goal, first)
     first = False
-    va_math = 0.
-    var *= .9999
+    # va_math = 0.
+    var *= .9998
     # print("Step: ",step)
     # goal = goal + (np.random.rand(2) - 0.5)  # 为训练部分的目标点添加一定的随机性
     while (j < MAX_GOAL_STEPS):  # and (success_num + fail_num <= 100):
@@ -394,9 +393,10 @@ for i in trange(MAX_EPISODES):
         # print("Action:",a) #  list with (8,2) shape.
         action[:, 0] = np.clip(np.random.normal(action[:, 0], var), 0, 1)   # linear V
         action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -1, 1)  # angular V
-        ## 多控制器切换
-        if np.random.rand() < var:
-            if s[0].min() <= 0.2:  # obstacle avoidance
+        ## 多控制器切换, 基本控制器有毒
+        if np.random.rand() < var/2:
+            print("The basic Control Lay.")
+            if s[0].min() <= 0.1:  # obstacle avoidance
                 # 判定障碍物方位, 决定左右转
                 if s.argmin() > len(s)/2:
                     # a[1] = -abs(s.min()-0.1)/0.1
@@ -404,24 +404,33 @@ for i in trange(MAX_EPISODES):
                 else:
                     # a[1] = abs(s.min()-0.1) / 0.1
                     action[0, 1] = np.clip(np.random.normal(0.8, 0.2), 0.7, 1)
-            else:
-                # 目标导航控制器
-                # 夹角大
-                if abs(p[0][3]) > 0.6:
-                    action[0, 1] = - p[0][3] / abs(p[0][3]) * 0.7
-                    action[0, 0] = 0.1
-                #  夹角小
-                elif abs(p[0][3]) < 0.3:
-                    action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.2
-                    action[0, 0] = 0.5
+            elif s[0].min() <= 0.2:
+                if s.argmin() > len(s)/2:
+                    # a[1] = -abs(s.min()-0.1)/0.1
+                    action[0, 1] = np.clip(np.random.normal(-0.15, 0.1), -0.3, 0)
                 else:
-                    action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.5
-                    action[0, 0] = 0.3
+                    # a[1] = abs(s.min()-0.1) / 0.1
+                    action[0, 1] = np.clip(np.random.normal(0.15, 0.1), 0, 0.3)
+                pass
+            else:
+                pass
+                # # 目标导航控制器
+                # # 夹角大
+                # if abs(p[0][3]) > 0.6:
+                #     action[0, 1] = - p[0][3] / abs(p[0][3]) * 0.7
+                #     action[0, 0] = 0.1
+                # #  夹角小
+                # elif abs(p[0][3]) < 0.3:
+                #     action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.2
+                #     action[0, 0] = 0.5
+                # else:
+                #     action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.5
+                #     action[0, 0] = 0.3
 
         s_, p_, r, done = env._step(action, goal)
         if done:
             # 一个episode内到达则重置目标点.
-            goal = np.random.rand(2) * 6
+            goal = [c, d] + np.random.rand(2) * 2
             print("Goal is: ", goal)
         ddpg.store_transition(s, p, action, r, s_, p_)
         total_step += 1

@@ -422,6 +422,8 @@ for i in range(MAX_EPISODES):
     success_num = 0
     done = [False for _ in range(nor)]
     # fail_num = 0
+    # 放宽停止条件试试？
+    # 做一个更加丰富的地图试试？ De oppresso liber
     while 1:
     # while j < MAX_GOAL_STEPS:  # and (success_num + fail_num <= 100):
         # a = ddpg.choose_action(s/10, p)
