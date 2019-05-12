@@ -187,7 +187,7 @@ class DDPG(object):
         self.saver = tf.train.Saver(max_to_keep=1000)
         # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/pddpg/models/toPoints/model_53000.ckpt")   # 选了toPoint的预训练模型载入
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-05-07_20:31/models/model_350000.ckpt")
-        self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-05-11/models/model_150000.ckpt")
+        # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-05-11/models/model_150000.ckpt")
         self.merged = tf.summary.merge_all()
         self.loss_writer = tf.summary.FileWriter(self.out_dir, self.sess.graph)
 
@@ -373,12 +373,12 @@ for i in trange(MAX_EPISODES):
     # 课程学习方式 # 初始中心点(-4,-7)
     course_goal = [[6, -5], [3, -3], [-3, -2], [5, 2],]
     c, d = course_goal[course_count % 5]
-    print('goal center is x: %f, y: %f' % (c, d))
     if i % 5000 == 0:
         course_count += 1
     else:
         pass
     goal = [c, d] + np.random.rand(2) * 2
+    print('goal center is x: %f, y: %f' % (c, d))
     print("Goal is: ", goal)
     action = np.zeros([nor, 2])
     s, p, r, done = env._step(action, goal, first)
@@ -395,7 +395,7 @@ for i in trange(MAX_EPISODES):
         action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -1, 1)  # angular V
         ## 多控制器切换, 基本控制器有毒
         if np.random.rand() < var/2:
-            print("The basic Control Lay.")
+            print("The basic Control Law.")
             if s[0].min() <= 0.1:  # obstacle avoidance
                 # 判定障碍物方位, 决定左右转
                 if s.argmin() > len(s)/2:
@@ -426,7 +426,9 @@ for i in trange(MAX_EPISODES):
                 # else:
                 #     action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.5
                 #     action[0, 0] = 0.3
-
+        else:
+            print("The DDPG Law.")
+            pass
         s_, p_, r, done = env._step(action, goal)
         if done:
             # 一个episode内到达则重置目标点.
