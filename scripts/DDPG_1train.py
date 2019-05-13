@@ -15,6 +15,7 @@ import time
 import datetime
 import pickle
 from tqdm import *
+import heapq
 
 # sys.path.append('/home/pygmalionchen/PycharmProjects/treasure/tf_rl')
 sys.path.append('/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl')
@@ -26,7 +27,7 @@ from gym import envs
 
 # MAX_EP_STEPS = 200
 MAX_EPISODES = 20000 #20000
-MAX_GOAL_STEPS = 2500  # 参考实际地图何时能走到去设置
+MAX_GOAL_STEPS = 2300  # 参考实际地图何时能走到去设置
 LR_A = 0.0001  # learning rate for actor
 LR_C = 0.0002  # learning rate for critic
 GAMMA = 0.95  # reward discount
@@ -372,6 +373,8 @@ for i in trange(MAX_EPISODES):
     # 间隔50个 episode 调整 course 难度
     # 课程学习方式 # 初始中心点(-4,-7)
     # course_goal = [[6, -5], [3, -3], [-3, -2], [5, 2]]
+
+    ### The goal of maddpg111.world
     course_goal = [[-1, -7], [2, -7], [6, -5], [3, -3], [-3, -2], [5, 2]]
     c, d = course_goal[course_count % 5]
     if i % 1000 == 0:
@@ -396,38 +399,60 @@ for i in trange(MAX_EPISODES):
         action[:, 0] = np.clip(np.random.normal(action[:, 0], var), 0, 1)   # linear V
         action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -0.5, 0.5)  # angular V
         ## 多控制器切换, 基本控制器有毒
+        # print("obs:", s[0])
         if np.random.rand() < var/2:
             # print("The basic Control Law.")
-            if s[0].min() <= 0.1:  # obstacle avoidance
-                # 判定障碍物方位, 决定左右转
-                if s.argmin() > len(s)/2:
-                    # a[1] = -abs(s.min()-0.1)/0.1
-                    action[0, 1] = np.clip(np.random.normal(-0.8, 0.2), -1, -0.7)
-                else:
-                    # a[1] = abs(s.min()-0.1) / 0.1
-                    action[0, 1] = np.clip(np.random.normal(0.8, 0.2), 0.7, 1)
-            elif s[0].min() <= 0.2:
-                if s.argmin() > len(s)/2:
-                    # a[1] = -abs(s.min()-0.1)/0.1
-                    action[0, 1] = np.clip(np.random.normal(-0.15, 0.1), -0.3, 0)
-                else:
-                    # a[1] = abs(s.min()-0.1) / 0.1
-                    action[0, 1] = np.clip(np.random.normal(0.15, 0.1), 0, 0.3)
+            nlargest = heapq.nlargest(30, s[0])
+            # print("nlargest Obs:",nlargest)
+            largest_index = []
+            for i in range(len(nlargest)):
+                for index, item in enumerate(s[0]):
+                    if item == nlargest[i] and (index not in largest_index):
+                        largest_index.append(index)
+                        # print("index: ", index)
+                    else:
+                        pass
+            direction = np.mean(largest_index) # 270°对应180维, 求得方向决定后续打角.
+            print("The direction:",direction)
+            # print("The index:",largest_index)
+            if direction < 60:
+                action[0, 1] = -abs(90 - direction) * 0.01
+            elif direction >= 60 and direction < 90:
                 pass
             else:
-                pass
-                # # 目标导航控制器
-                # # 夹角大
-                # if abs(p[0][3]) > 0.6:
-                #     action[0, 1] = - p[0][3] / abs(p[0][3]) * 0.7
-                #     action[0, 0] = 0.1
-                # #  夹角小
-                # elif abs(p[0][3]) < 0.3:
-                #     action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.2
-                #     action[0, 0] = 0.5
-                # else:
-                #     action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.5
-                #     action[0, 0] = 0.3
+                action[0, 1] = abs(90 - direction) * 0.01
+            pass
+            ## 这部分策略并不适合隧道的行走, 只适合避开前面的障碍物
+            # if s[0].min() <= 0.1:  # obstacle avoidance
+            #     # 判定障碍物方位, 决定左右转
+            #     if s.argmin() < len(s)/2:
+            #         # a[1] = -abs(s.min()-0.1)/0.1
+            #         action[0, 1] = np.clip(np.random.normal(-0.8, 0.2), -1, -0.7)
+            #     else:
+            #         # a[1] = abs(s.min()-0.1) / 0.1
+            #         action[0, 1] = np.clip(np.random.normal(0.8, 0.2), 0.7, 1)
+            # elif s[0].min() <= 0.2:
+            #     if s.argmin() < len(s)/2:
+            #         # a[1] = -abs(s.min()-0.1)/0.1
+            #         action[0, 1] = np.clip(np.random.normal(-0.15, 0.1), -0.3, 0)
+            #     else:
+            #         # a[1] = abs(s.min()-0.1) / 0.1
+            #         action[0, 1] = np.clip(np.random.normal(0.15, 0.1), 0, 0.3)
+            #     pass
+            # else:
+            #     pass
+            #     # # 目标导航控制器
+            #     # # 夹角大
+            #     # if abs(p[0][3]) > 0.6:
+            #     #     action[0, 1] = - p[0][3] / abs(p[0][3]) * 0.7
+            #     #     action[0, 0] = 0.1
+            #     # #  夹角小
+            #     # elif abs(p[0][3]) < 0.3:
+            #     #     action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.2
+            #     #     action[0, 0] = 0.5
+            #     # else:
+            #     #     action[0, 1] = -p[0][3] / abs(p[0][3]) * 0.5
+            #     #     action[0, 0] = 0.3
         else:
             # print("The DDPG Law.")
             pass

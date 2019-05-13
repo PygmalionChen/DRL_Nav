@@ -96,7 +96,7 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
     def calculate_observation(self, data):  # determine whether there is a collision
         min_range = 0.3
         collision = False
-        where_are_inf = np.isinf(data)
+        where_are_inf = np.isinf(data) # 获取inf元素的索引
         data[where_are_inf] = self.max_range_dis  # 最大距离
         for i, item in enumerate(data):
             if min_range > data[i] > 0:
@@ -148,7 +148,8 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
         reward = []
         done_list = False
         goal_dis = np.sqrt((self.listen_class.odom_list[0].pose.pose.position.x - goal[0]) ** 2 + (self.listen_class.odom_list[0].pose.pose.position.y - goal[1]) ** 2) / self.max_range_dis  # 归一化目标距离
-        goal_dis_reward = - goal_dis * 10  # 距离惩罚
+        goal_dis_reward = - goal_dis  # 距离惩罚   goal_dis \in [0, 1] 普遍在0.5到1之间
+        # print("goal_dis_reward:", goal_dis_reward)
         reward.append(goal_dis_reward)
         state, collision = self.calculate_observation(np.array(self.listen_class.range_list[0]))
         state_list.append(state)
@@ -178,21 +179,19 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
             reward[0] -= 2
             self.resetState(0)
         # 根据距离信息粗略给定一个动态Reward, 并进行到达检测.
-        if goal_dis < 0.05:
+        if goal_dis < 0.1:
             done_list = True
             reward[0] += 5
-        elif goal_dis < 0.2 and goal_dis >= 0.03:
+        elif goal_dis < 0.3 and goal_dis >= 0.1:
             reward[0] += 2
-        elif goal_dis < 0.5 and goal_dis >= 0.2:
+        elif goal_dis < 1 and goal_dis >= 0.3:
             reward[0] += 1
-        elif goal_dis < 0.7 and goal_dis >= 0.5:
-            reward[0] -= 0.5
         else:
             reward[0] -= 0.5
 
         return np.array(state_list), np.array(param_list), np.array(reward), done_list
 
-    def get_all_init_states(self):  # 在前期调用一次，获取机器人的初始位置
+    def get_all_init_states(self):  # 在前期调用一次，获取机器人的初始位置 # 已停用！
         # 这个循环是为了等所有机器人都加载完
         self.init_pose = []
         for i in range(self.nor):
