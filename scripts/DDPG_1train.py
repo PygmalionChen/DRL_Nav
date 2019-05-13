@@ -402,7 +402,9 @@ for i in trange(MAX_EPISODES):
         # print("obs:", s[0])
         if np.random.rand() < var/2:
             # print("The basic Control Law.")
+            # 激光观测数组从机器人的右边到左边排列,即数组低位对应右端激光.
             nlargest = heapq.nlargest(30, s[0])
+            action[:, 0] = 0
             # print("nlargest Obs:",nlargest)
             largest_index = []
             for i in range(len(nlargest)):
@@ -413,11 +415,11 @@ for i in trange(MAX_EPISODES):
                     else:
                         pass
             direction = np.mean(largest_index) # 270°对应180维, 求得方向决定后续打角.
-            print("The direction:",direction)
+            # print("The direction:",direction)
             # print("The index:",largest_index)
-            if direction < 60:
+            if direction < 60: # action[0, 1]角速度为负数, 则机器人右转.反之左转。
                 action[0, 1] = -abs(90 - direction) * 0.01
-            elif direction >= 60 and direction < 90:
+            elif direction >= 60 and direction < 120:
                 pass
             else:
                 action[0, 1] = abs(90 - direction) * 0.01
