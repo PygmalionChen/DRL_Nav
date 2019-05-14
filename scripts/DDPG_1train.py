@@ -27,7 +27,7 @@ from gym import envs
 
 # MAX_EP_STEPS = 200
 MAX_EPISODES = 20000 #20000
-MAX_GOAL_STEPS = 2300  # 参考实际地图何时能走到去设置
+MAX_GOAL_STEPS = 1600  # 参考实际地图何时能走到去设置
 LR_A = 0.0001  # learning rate for actor
 LR_C = 0.0002  # learning rate for critic
 GAMMA = 0.95  # reward discount
@@ -375,10 +375,12 @@ for i in trange(MAX_EPISODES):
     # course_goal = [[6, -5], [3, -3], [-3, -2], [5, 2]]
 
     ### The goal of maddpg111.world
-    course_goal = [[-1, -7], [2, -7], [6, -5], [3, -3], [-3, -2], [5, 2]]
+    # course_goal = [[-1, -7], [2, -7], [6, -5], [3, -3], [-3, -2], [5, 2]]
+    course_goal = [[6, -5], [6, -5], [3, -3], [-3, -2], [5, 2]]
     c, d = course_goal[course_count % 5]
     if i % 1000 == 0:
         course_count += 1
+        MAX_GOAL_STEPS += 200
     else:
         pass
     goal = [c, d] + np.random.rand(2) * 1
@@ -404,12 +406,11 @@ for i in trange(MAX_EPISODES):
             # print("The basic Control Law.")
             # 激光观测数组从机器人的右边到左边排列,即数组低位对应右端激光.
             nlargest = heapq.nlargest(30, s[0])
-            action[:, 0] = 0
             # print("nlargest Obs:",nlargest)
             largest_index = []
-            for i in range(len(nlargest)):
+            for index_i in range(len(nlargest)):
                 for index, item in enumerate(s[0]):
-                    if item == nlargest[i] and (index not in largest_index):
+                    if item == nlargest[index_i] and (index not in largest_index):
                         largest_index.append(index)
                         # print("index: ", index)
                     else:
@@ -418,12 +419,11 @@ for i in trange(MAX_EPISODES):
             # print("The direction:",direction)
             # print("The index:",largest_index)
             if direction < 60: # action[0, 1]角速度为负数, 则机器人右转.反之左转。
-                action[0, 1] = -abs(90 - direction) * 0.01
+                action[0, 1] = -abs(90 - direction) * 0.01 + np.clip(np.random.normal(-0.2, 0.1), -0.3, 0)
             elif direction >= 60 and direction < 120:
                 pass
             else:
-                action[0, 1] = abs(90 - direction) * 0.01
-            pass
+                action[0, 1] = abs(90 - direction) * 0.01 + np.clip(np.random.normal(0.2, 0.1), 0, 0.3)
             ## 这部分策略并不适合隧道的行走, 只适合避开前面的障碍物
             # if s[0].min() <= 0.1:  # obstacle avoidance
             #     # 判定障碍物方位, 决定左右转
@@ -476,16 +476,16 @@ for i in trange(MAX_EPISODES):
         ep_reward += float(sum(r))
         # sum(dis)
         step += 1
-        j += 1
         if j % 10 == 0 and total_step >= MEMORY_CAPACITY:  # if j % 10 == 0 and total_step >= MEMORY_CAPACITY:
             ddpg.learn(True)
-        if j == MAX_GOAL_STEPS - 1:
+        if j == MAX_GOAL_STEPS - 1 or done: # 一个episode结束也需要计算一次ep_reward.
             v2 = tf.Summary.Value(tag='ep_reward', simple_value=ep_reward)
             s2 = tf.Summary(value=[v2])
             ddpg.loss_writer.add_summary(s2, i)
             print('Episode:', i+1, 'step: ', step, ' Reward_sum: %.4f' % ep_reward, 'Explore: %.2f' % var)
             reward_list.append(ep_reward)
             break
+        j += 1
     if i >= 20: # 20 是滑动窗口的大小. 也就是20次存一次取avg_reward
         print("reward_list:",reward_list)
         reward_list.remove(reward_list[0])
