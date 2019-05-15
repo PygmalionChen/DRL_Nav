@@ -376,13 +376,8 @@ for i in trange(MAX_EPISODES):
 
     ### The goal of maddpg111.world
     # course_goal = [[-1, -7], [2, -7], [6, -5], [3, -3], [-3, -2], [5, 2]]
-    course_goal = [[6, -5], [6, -5], [3, -3], [-3, -2], [5, 2], [5,4]]
+    course_goal = [[5, -7], [6, -5], [3, -3], [-3, -2], [5, 2], [5,4]]
     c, d = course_goal[course_count % 5]
-    if i % 2000 == 0:
-        course_count += 1
-        MAX_GOAL_STEPS += 150
-    else:
-        pass
     goal = [c, d] + np.random.rand(2) * 1
     print('goal center is x: %f, y: %f' % (c, d))
     print("Goal is: ", goal)
@@ -486,6 +481,12 @@ for i in trange(MAX_EPISODES):
             reward_list.append(ep_reward)
             break
         j += 1
+    #  2000 episode转换一次课程难度
+    if i % 2000 == 0:
+        course_count += 1
+        MAX_GOAL_STEPS += 150
+    else:
+        pass
     if i >= 20: # 20 是滑动窗口的大小. 也就是20次存一次取avg_reward
         print("reward_list:",reward_list)
         reward_list.remove(reward_list[0])
