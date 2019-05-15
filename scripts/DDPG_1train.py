@@ -136,7 +136,7 @@ class Memory(object):  # stored as ( s, a, r, s_ ) in SumTree
 
 class DDPG(object):
     def __init__(self, a_dim, s_dim, p_dim, ):
-        # self.memory = np.zeros((MEMORY_CAPACITY, s_dim * 2 + p_dim * 2 + a_dim + 1), dtype=np.float32)
+        # self.memory = np.zeros((MEMORY_CAPACITY, s_dim * 2 + p_dim * 2 + a_dim + 1), dtype=np.float32)payihuierba
         self.memory = Memory(MEMORY_CAPACITY)
         self.pointer = 0
         config = tf.ConfigProto()
@@ -170,9 +170,7 @@ class DDPG(object):
         self.ct_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='Critic/target')
 
         # target net replacement
-        self.soft_replace = [[tf.assign(ta, (1 - TAU) * ta + TAU * ea), tf.assign(tc, (1 - TAU) * tc + TAU * ec)]
-                             for ta, ea, tc, ec in zip(self.at_params, self.ae_params, self.ct_params, self.ce_params)]
-
+        self.soft_replace = [[tf.assign(ta, (1 - TAU) * ta + TAU * ea), tf.assign(tc, (1 - TAU) * tc + TAU * ec)] for ta, ea, tc, ec in zip(self.at_params, self.ae_params, self.ct_params, self.ce_params)]
         q_target = self.R + GAMMA * q_
         # in the feed_dic for the td_error, the self.a should change to actions in memory
         td_error = tf.losses.mean_squared_error(labels=q_target, predictions=q)
@@ -459,6 +457,7 @@ for i in trange(MAX_EPISODES):
             env.resetState(0)
             goal = [c, d] + np.random.rand(2) * 1
             print("New goal is: ", goal)
+            j = 0 # 如果不重置j, 则机器人没有足够的步数在当前episode内走完一个轨迹.
         ddpg.store_transition(s, p, action, r, s_, p_)
         total_step += 1
         if total_step == MEMORY_CAPACITY:
