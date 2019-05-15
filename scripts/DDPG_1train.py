@@ -376,11 +376,11 @@ for i in trange(MAX_EPISODES):
 
     ### The goal of maddpg111.world
     # course_goal = [[-1, -7], [2, -7], [6, -5], [3, -3], [-3, -2], [5, 2]]
-    course_goal = [[6, -5], [6, -5], [3, -3], [-3, -2], [5, 2]]
+    course_goal = [[6, -5], [6, -5], [3, -3], [-3, -2], [5, 2], [5,4]]
     c, d = course_goal[course_count % 5]
-    if i % 1000 == 0:
+    if i % 2000 == 0:
         course_count += 1
-        MAX_GOAL_STEPS += 200
+        MAX_GOAL_STEPS += 150
     else:
         pass
     goal = [c, d] + np.random.rand(2) * 1

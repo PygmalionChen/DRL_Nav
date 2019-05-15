@@ -176,12 +176,12 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
             pass
         elif collision:
             # 碰撞处理只处理单个持续碰撞才重置
-            reward[0] -= 2
+            reward[0] -= 5  # 原来给2的 penality 不够
             self.resetState(0)
         # 根据距离信息粗略给定一个动态Reward, 并进行到达检测.
         if goal_dis < 0.1:
             done_list = True
-            reward[0] += 5
+            reward[0] += 8
         elif goal_dis < 0.3 and goal_dis >= 0.1:
             reward[0] += 2
         elif goal_dis < 1 and goal_dis >= 0.3:
