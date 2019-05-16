@@ -134,7 +134,7 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
         except rospy.ServiceException as e:
             print("/gazebo/unpause_physics service call failed")
         if first:
-            rospy.sleep(2)
+            rospy.sleep(1)
             self.get_all_init_states()
         self.vel_pub[0].publish(vcmds[0])
         rospy.sleep(0.1/10)  # 指令要持续一段时间，注意这是仿真时间，真实时间要考虑仿真速率比
