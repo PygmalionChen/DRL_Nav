@@ -14,6 +14,7 @@ import random
 import time
 import datetime
 import pickle
+from tqdm import *
 
 # sys.path.append('/home/pygmalionchen/PycharmProjects/treasure/tf_rl')
 sys.path.append('/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl')
@@ -25,7 +26,7 @@ from gym import envs
 
 # MAX_EP_STEPS = 200
 MAX_EPISODES = 20000
-MAX_GOAL_STEPS = 5000  # 或许下面这些学习率也可以做一组对比试验
+MAX_GOAL_STEPS = 1100  # 或许下面这些学习率也可以做一组对比试验
 LR_A = 0.0001  # learning rate for actor
 LR_C = 0.0002  # learning rate for critic
 GAMMA = 0.95  # reward discount
@@ -33,7 +34,7 @@ TAU = 0.01  # soft replacement
 MEMORY_CAPACITY = 100000
 BATCH_SIZE = 128
 START_LEARN = 50000
-nor = 8 #8  # 8 number of robots
+nor = 1 #8  # 8 number of robots
 
 
 class SumTree(object):
@@ -185,8 +186,8 @@ class DDPG(object):
         self.saver = tf.train.Saver(max_to_keep=5)
 
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/formation/model_190000.ckpt")
-        self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/toPoints/model_53000.ckpt")
-        # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/SingleGood/model_38750.ckpt")
+        # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/toPoints/model_53000.ckpt")
+        self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-05-16_23_08/models/model_240000.ckpt")
 
         self.merged = tf.summary.merge_all()
         self.loss_writer = tf.summary.FileWriter(self.out_dir, self.sess.graph)
@@ -350,138 +351,48 @@ class DDPG(object):
 ###############################  training  ####################################
 
 # env = gym.make('DDPGEnv-v0')
-env = gym.make('formDDPGEnv-v0')
+# env = gym.make('formDDPGEnv-v0')
+env = gym.make('DDPG1Go-v0')
 env.seed(2)
 s_dim = 180
 a_dim = 2
-p_dim = 4 # nor + 3  # 4
+p_dim = nor + 3 # nor + 3  # 4
 ddpg = DDPG(a_dim, s_dim, p_dim)
 
-var = 0.008  # control exploration
+Test = True
+TestEpisodes = 1000
 t1 = time.time()
-total_step = 0
-ep_count = 0
+test_count = 0
+success_count = 0
 # env.get_all_init_states() #获取机器人初始位置
 first = True
-arrive_list = np.zeros(nor)
-piao_count = np.zeros(nor)
-def gen_goal(c, d):
-    return [[c - 1, d + 1], [c, d + 1], [c + 1, d + 1], [c - 1, d], [c + 1, d], [c - 1, d - 1],
-            [c, d - 1], [c + 1, d - 1]]
-# gl = []
-# a= [-4.25, -6.25]
-# for i in range(40):
-#     a = [a[0]+0.25,a[1]+0.25]
-#     gl.append(a)
-    # return [[c - 2, d ], [c-1, d + 1], [c , d +2], [c+1, d+1], [c +2, d], [c , d ],
-    #  [c, d - 1], [c, d -2]]
-for i in range(MAX_EPISODES):
-    env.reset()
+for i in trange(TestEpisodes):
+    env._reset()
     ep_reward = 0.
-    x1 = 0
-    y1 = 0
     step = 0  # count the steps
-    # c, d = (np.random.rand(2) - 0.5) * 16  # the center of goal
-    # c, d = 2,-2
-    c, d = -4,-7
-    # gl = [[2.5,-1],[3,0],[3.4,2],[3,4],[4,6],[7,7]]
-    # gl = [[0, -5],[0,-1],[0,3],[0,7]]
-
-    # 对角直线
-    gl = [[-4,-6], [-3,-5], [-2,-4], [-1,-3], [0,-2], [1,-1], [2,0], [3,1], [4,2], [5,3]]
-    # gl = [[-4, -6], [-3, -5], [-2, 2], [3, 1], [4, 2], [5, 3]]
-
-    # 环形路线
-    # gl = [[-3.5, -6], [-3.0, -6], [-2.5, -6], [-2.0, -6], [-1.5, -6], [-1.0, -6], [-0.5, -6], [0.0, -6], [0.5, -6], [1.0, -6], [1.5, -6], [2.0, -6], [2.5, -6], [3.0, -6], [3.5, -6], [4.0, -6], [4.5, -6], [5.0, -6],[5.0, -5.5], [5.0, -5.0], [5.0, -4.5], [5.0, -4.0], [5.0, -3.5], [5.0, -3.0], [5.0, -2.5], [5.0, -2.0], [5.0, -1.5], [5.0, -1.0], [5.0, -0.5], [5.0, 0.0], [5.0, 0.5], [5.0, 1.0], [5.0, 1.5], [5.0, 2.0], [5.0, 2.5], [5.0, 3.0],[4.5, 3.0], [4.0, 3.0], [3.5, 3.0], [3.0, 3.0], [2.5, 3.0], [2.0, 3.0], [1.5, 3.0], [1.0, 3.0], [0.5, 3.0], [0.0, 3.0], [-0.5, 3.0], [-1.0, 3.0], [-1.5, 3.0], [-2.0, 3.0], [-2.5, 3.0], [-3.0, 3.0], [-3.5, 3.0], [-4.0, 3.0], [-4.0, 2.5], [-4.0, 2.0], [-4.0, 1.5], [-4.0, 1.0], [-4.0, 0.5], [-4.0, 0.0], [-4.0, -0.5], [-4.0, -1.0], [-4.0, -1.5], [-4.0, -2.0], [-4.0, -2.5], [-4.0, -3.0], [-4.0, -3.5], [-4.0, -4.0], [-4.0, -4.5], [-4.0, -5.0], [-4.0, -5.5], [-4.0, -6.0]]
-    # gl = [[-4, -7], [-3.5, -7], [-3.0, -7], [-2.5, -7], [-2.0, -7], [-1.5, -7], [-1.0, -7], [-0.5, -7], [0.0, -7], [0.5, -7], [1.0, -7], [1.5, -7], [2.0, -7], [2.5, -7], [3.0, -7], [3.5, -7], [4.0, -7], [5, -6], [5, -5.5], [5, -5.0], [5, -4.5], [5, -4.0], [5, -3.5], [5, -3.0], [4.5, -3.0], [4.0, -3.0], [3.5, -3.0], [3.0, -3.0], [2.5, -3.0], [2.0, -3.0], [1.5, -3.0], [1.0, -3.0], [0.5, -3.0], [0.0, -3.0], [-0.5, -3.0], [-1.0, -3.0], [-1.5, -3.0], [-2.0, -3.0], [-2.5, -3.0], [-3.0, -3.0], [-3.5, -3.0], [-4.0, -3.0], [-4.0, -2.5], [-4.0, -2.0], [-4.0, -1.5], [-4.0, -1.0], [-4.0, -0.5], [-4.0, 0.0], [-4.0, 0.5], [-4.0, -2.5], [-4.0, -2.0], [-4.0, -1.5], [-4.0, -1.0], [-4.0, -0.5], [-4.0, 0.0], [-4.0, 0.5], [-4.0, 1.0], [-4.0, 1.5], [-4.0, 2.0], [-4.0, 2.5], [-4.0, 3.0], [-4.0, 3.5], [-4.0, 4.0]]
-
-    # gl = [[-4, -7], [-3, -7], [-2, -7], [-1, -7], [0, -7], [1, -7], [2, -7], [3, -7], [4, -7], [5, -7] ,[5, -6], [5, -5], [5, -4], [5, -3], [5, -2], [5, -1], [5, 0], [5, 1], [5, 2], [5, 3], [4, 3], [3, 3], [2, 3], [1, 3], [0, 3], [-1, 3], [-2, 3], [-3, 3], [-4, 3], [-4, 2], [-4, 1], [-4, 0], [-4, -1], [-4, -2], [-4, -3], [-4, -4], [-4, -5], [-4, -6], [-4, -7]]
-    # gl = [[-3, -7], [-1,-3], [-2,2], [7,4]] #, [0,-6], [5,-6],
-    count = 0
-
-    print('goal center is x: %f, y: %f' % (c, d))
-    #####################
-    #    0    1    2
-
-    #    3         4
-
-    #    5    6    7
-    #####################
-    goal = gen_goal(c,d)
-    # goal = [[c - 1, d + 1], [c, d + 1], [c + 1, d + 1], [c - 1, d], [c + 1, d], [c - 1, d - 1],
-    #         [c, d - 1], [c + 1, d - 1]]
-    # goal = [[0, 2], [2, 0], [-2, 0], [0, -2], [2, 2], [-2, 2], [-2, -2], [2, -2]]
-    # goal = (np.random.rand(nor, 2) - 0.5) * 18
-    # print(goal)
     j = 0
-    a = np.zeros([nor, 2])
-    s, p, _, _ = env._step(a, goal, first)
+    CourseGoal = [[5, -6], [5, -4], [3, -3], [-3, -2], [-2, 0], [5, 2], [5, 4]]
+    goal = CourseGoal[test_count % 5]
+    print("Goal is: ", goal)
+    action = np.zeros([nor, 2])
+    s, p, r, done = env._step(action, goal, first)
     first = False
-    va_math = 0.
-    var *= .98
-    success_num = 0
-    done = [False for _ in range(nor)]
-    # fail_num = 0
-    # 放宽停止条件试试？
-    # 做一个更加丰富的地图试试？ De oppresso liber
-    while 1:
-    # while j < MAX_GOAL_STEPS:  # and (success_num + fail_num <= 100):
-        # a = ddpg.choose_action(s/10, p)
-        a = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
-        # 用于单独到点并调整朝向的。
-        # if d==-2:
-        #     for k, v in enumerate(done):
-        #         if v:
-        #             arrive_list[k] = 1
-        #         else:
-        #             piao_count[k] += 1
-        #             if piao_count[k] >= 400:
-        #                 arrive_list[k] = 0
-        #                 piao_count[k] = 0
-        #         if arrive_list[k] == 1 and abs(f[k]) < 0.05:
-        #             a[k] = [0, 0]
-        #         elif arrive_list[k] == 1 and random.random() > 0.3:
-        #             a[k, 1] = -f[k] / abs(f[k]) * 0.2
-        #             a[k, 0] = 0
-
-        # 加入编队控制的约束，主要是在移动前调整好朝向
-        if all(done) and count< len(gl):
-            c,d = gl[count]
-            count+=1
-            # c, d = (np.random.rand(2) - 0.5) * 8
-            # d+=0.2
-            print('goal ',[c,d])
-            goal = gen_goal(c,d)
-            # 到目标点调专项
-            while np.average(abs(np.array(p[:,1])))>0.15:
-                for k in range(nor):
-                    a[k, 1] = -p[k,1] / abs(p[k,1]) * 0.3
-                    a[k, 0] = 0
-                s, p, r, done = env._step(a, goal)
-
-        # if count==1:
-        #     while 1:
-        #         pass
-        s_, p_, r, done = env._step(a, goal)
-        success_num += sum(done)
-        # fail_num += sum(pong)
+    while (j < MAX_GOAL_STEPS and not done):
+        action = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
+        s_, p_, r, done = env._step(action, goal)
         p = p_.copy()
         s = s_.copy()
-        ep_reward += float(sum(r))
-        # sum(dis)
-        step += 1
         j += 1
-        if j % 10 == 0 and total_step >= MEMORY_CAPACITY:
-            ddpg.learn(True)
-        if j == MAX_GOAL_STEPS - 1:
-            # arrive_rate = success_num / (max(success_num + fail_num, 1))
-            # print('fail_num is ', fail_num, 'success_num is ', success_num,
-            #       'arrive_rate is %.2f%%' % (100 * arrive_rate))
-            # v = tf.Summary.Value(tag='arrive_rate', simple_value=arrive_rate)
-            # s = tf.Summary(value=[v])
-            # ddpg.loss_writer.add_summary(s, i)
-            v2 = tf.Summary.Value(tag='ep_reward', simple_value=ep_reward)
-            s2 = tf.Summary(value=[v2])
-            ddpg.loss_writer.add_summary(s2, i)
-            print('Episode:', i, 'step: ', step, ' Reward_sum: %.4f' % ep_reward, 'Explore: %.2f' % var)
-            break
+        if done:
+            success_count += 1
+            print("Success step: ",j)
+        else:
+            pass
+    if (i % 100 == 0):
+        test_count += 1
+        MAX_GOAL_STEPS += 150
+    else:
+        pass
+print("Arrival Rate: ", success_count/TestEpisodes)
+
+
