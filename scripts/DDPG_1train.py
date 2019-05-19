@@ -28,7 +28,7 @@ from gym import envs
 
 # MAX_EP_STEPS = 200
 MAX_EPISODES = 20000 #20000
-MAX_GOAL_STEPS = 1000  # 参考实际地图何时能走到去设置
+MAX_GOAL_STEPS = 1100  # 参考实际地图何时能走到去设置
 LR_A = 0.0001  # learning rate for actor
 LR_C = 0.0002  # learning rate for critic
 GAMMA = 0.95  # reward discount
@@ -37,6 +37,16 @@ MEMORY_CAPACITY = 10000
 BATCH_SIZE =  128# 256
 nor = 1  # number of robots
 
+def normalize(x, stats):
+    if stats is None:
+        return x
+    return (x - stats.mean) / stats.std
+
+
+def denormalize(x, stats):
+    if stats is None:
+        return x
+    return x * stats.std + stats.mean
 
 class SumTree(object):
     data_pointer = 0
@@ -365,18 +375,16 @@ course_count = 0
 for i in trange(MAX_EPISODES):
     env._reset()
     ep_reward = 0.
-    x1 = 0
-    y1 = 0
     step = 0  # count the steps
     j = 0
     # 间隔50个 episode 调整 course 难度
     # 课程学习方式 # 初始中心点(-4,-7)
     # course_goal = [[6, -5], [3, -3], [-3, -2], [5, 2]]
-    StartTime = rospy.Time.now()
+    # StartTime = rospy.Time.now()
     # print("StartTime: ", StartTime)
     ### The goal of maddpg111.world
     # course_goal = [[-1, -7], [2, -7], [6, -5], [3, -3], [-3, -2], [5, 2]]
-    course_goal = [[5, -7], [6, -5], [3, -3], [-3, -2], [5, 2], [5,4]]
+    course_goal = [[5, -6], [5, -4], [3, -3], [-3,-2], [-2, 0], [5, 2], [5, 4]]
     c, d = course_goal[course_count % 5]
     goal = [c, d] + np.random.rand(2) * 1
     print('goal center is x: %f, y: %f' % (c, d))
@@ -395,7 +403,7 @@ for i in trange(MAX_EPISODES):
         # DDPG add the noise.
         action[:, 0] = np.clip(np.random.normal(action[:, 0], var), 0, 1)   # linear V
         action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -0.5, 0.5)  # angular V
-        ## 多控制器切换, 基本控制器有毒
+        ## 基本控制策略能够继续优化. 能否写一个专家策略？
         # print("obs:", s[0])
         if np.random.rand() < var/2:
             # print("The basic Control Law.")
@@ -414,11 +422,11 @@ for i in trange(MAX_EPISODES):
             # print("The direction:",direction)
             # print("The index:",largest_index)
             if direction < 60: # action[0, 1]角速度为负数, 则机器人右转.反之左转。
-                action[0, 1] = -abs(90 - direction) * 0.01 + np.clip(np.random.normal(-0.5, 0.1), -0.5, -0.2)
+                action[0, 1] = -abs(90 - direction) * 0.01 + np.clip(np.random.normal(-0.5, 0.1), -0.7, -0.3)
             elif direction >= 60 and direction < 120:
                 pass
             else:
-                action[0, 1] = abs(90 - direction) * 0.01 + np.clip(np.random.normal(0.5, 0.1), 0.2, 0.5)  # np.clip(np.random.normal(0.2, 0.1), 0, 0.3) 转向能力不足
+                action[0, 1] = abs(90 - direction) * 0.01 + np.clip(np.random.normal(0.5, 0.1), 0.3, 0.7)  # np.clip(np.random.normal(0.2, 0.1), 0, 0.3) 转向能力不足
             ## 这部分策略并不适合隧道的行走, 只适合避开前面的障碍物
             # if s[0].min() <= 0.1:  # obstacle avoidance
             #     # 判定障碍物方位, 决定左右转
@@ -482,8 +490,8 @@ for i in trange(MAX_EPISODES):
             reward_list.append(ep_reward)
             break
         j += 1
-    EpTime = rospy.Time.now() - StartTime
-    print("EpTime: ", EpTime/(1.0e9))
+    # EpTime = rospy.Time.now() - StartTime
+    # print("EpTime: ", EpTime/(1.0e9))
     #  2000 episode转换一次课程难度
     if i % 2000 == 0:
         course_count += 1
