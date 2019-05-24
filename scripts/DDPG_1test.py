@@ -15,6 +15,7 @@ import time
 import datetime
 import pickle
 from tqdm import *
+import heapq
 
 # sys.path.append('/home/pygmalionchen/PycharmProjects/treasure/tf_rl')
 sys.path.append('/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/tf_rl')
@@ -379,6 +380,32 @@ for i in trange(TestEpisodes):
     first = False
     while (j < MAX_GOAL_STEPS and not done):
         action = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
+        #############################################################
+        if 1:
+            gl_dis = np.sqrt((env.listen_class.odom_list[0].pose.pose.position.x - goal[0]) ** 2 + ( env.listen_class.odom_list[0].pose.pose.position.y - goal[1]) ** 2) / env.max_range_dis
+            print("gl_dis: ", gl_dis)
+            head_largest = np.max(heapq.nlargest(30, s[0][60:120]))
+            # print("head_largest:", head_largest)
+            gl_theta = env.cal_theta(goal)
+            # 目标点与机器人间无障碍
+            if (head_largest < gl_dis) and (abs(gl_theta) < 0.67):
+                action[0, 0] = 0.5 * gl_dis + 0.5 * action[0, 0]
+                action[0, 1] = 0.5 * gl_theta + 0.5 * action[0, 1]
+                pass
+            else:  # 目标点与机器人间存在障碍,即先要避开当前的障碍
+                # 激光观测数组从机器人的右边到左边排列,即数组低位对应右端激光.
+                largest_index = Nlargest(s[0])
+                direction = np.mean(largest_index)  # 270°对应180维, 求得方向决定后续打角.
+                # print("The direction:",direction)
+                # print("The index:",largest_index)
+                if direction < 60:  # action[0, 1]角速度为负数, 则机器人右转.反之左转。
+                    action[0, 1] = -abs(90 - direction) * 0.01 + np.clip(np.random.normal(-0.5, 0.1), -0.7, -0.3)
+                elif direction >= 60 and direction < 120:
+                    pass
+                else:
+                    action[0, 1] = abs(90 - direction) * 0.01 + np.clip(np.random.normal(0.5, 0.1), 0.3, 0.7)  # np.clip(np.random.normal(0.2, 0.1), 0, 0.3) 转向能力不足
+                pass
+        ##################################################################
         s_, p_, r, done = env._step(action, goal)
         p = p_.copy()
         s = s_.copy()
