@@ -357,6 +357,19 @@ class DDPG(object):
                                         bias_initializer=init_b, name='a', trainable=trainable)
         return q
 
+################################################################################
+def Nlargest(input_list):
+    nlargest = heapq.nlargest(30, input_list)
+    # print("nlargest Obs:",nlargest)
+    largest_index = []
+    for index_i in range(len(nlargest)):
+        for index, item in enumerate(input_list):
+            if item == nlargest[index_i] and (index not in largest_index):
+                largest_index.append(index)
+                # print("index: ", index)
+            else:
+                pass
+    return largest_index
 ###############################  training  ####################################
 env = gym.make('DDPG1Go-v0')
 env.seed(2)
@@ -372,6 +385,7 @@ ddpg = DDPG(a_dim, s_dim, p_dim)
 first = True
 reward_list = []
 course_count = 0
+
 for i in trange(MAX_EPISODES):
     env._reset()
     ep_reward = 0.
@@ -399,34 +413,52 @@ for i in trange(MAX_EPISODES):
     while (j < MAX_GOAL_STEPS):  # and (success_num + fail_num <= 100):
         # a = ddpg.choose_action(s/10, p)
         action = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
-        # print("Action:",a) #  list with (8,2) shape.
+        # print("Action:",action) #  list with (1,2) shape.
         # DDPG add the noise.
         action[:, 0] = np.clip(np.random.normal(action[:, 0], var), 0, 1)   # linear V
         action[:, 1] = np.clip(np.random.normal(action[:, 1], var), -0.5, 0.5)  # angular V
         ## 基本控制策略能够继续优化. 能否写一个专家策略？
         # print("obs:", s[0])
+        #############################################################
         if np.random.rand() < var/2:
-            # print("The basic Control Law.")
-            # 激光观测数组从机器人的右边到左边排列,即数组低位对应右端激光.
-            nlargest = heapq.nlargest(30, s[0])
-            # print("nlargest Obs:",nlargest)
-            largest_index = []
-            for index_i in range(len(nlargest)):
-                for index, item in enumerate(s[0]):
-                    if item == nlargest[index_i] and (index not in largest_index):
-                        largest_index.append(index)
-                        # print("index: ", index)
-                    else:
-                        pass
-            direction = np.mean(largest_index) # 270°对应180维, 求得方向决定后续打角.
-            # print("The direction:",direction)
-            # print("The index:",largest_index)
-            if direction < 60: # action[0, 1]角速度为负数, 则机器人右转.反之左转。
-                action[0, 1] = -abs(90 - direction) * 0.01 + np.clip(np.random.normal(-0.5, 0.1), -0.7, -0.3)
-            elif direction >= 60 and direction < 120:
+            gl_dis = np.sqrt((env.listen_class.odom_list[0].pose.pose.position.x - goal[0]) ** 2 + (env.listen_class.odom_list[0].pose.pose.position.y - goal[1]) ** 2) / env.max_range_dis
+            # print("gl_dis: ", gl_dis)
+            head_largest = np.max(heapq.nlargest(30, s[0][60:120]))
+            # print("head_largest:", head_largest)
+            gl_theta = env.cal_theta(goal)
+            # 目标点与机器人间无障碍
+            if (head_largest < gl_dis) and (abs(gl_theta) < 0.67):
+                action[0, 0] = 0.5*gl_dis + 0.5*action[0, 0]
+                action[0, 1] = 0.5*gl_theta + 0.5*action[0, 1]
                 pass
-            else:
-                action[0, 1] = abs(90 - direction) * 0.01 + np.clip(np.random.normal(0.5, 0.1), 0.3, 0.7)  # np.clip(np.random.normal(0.2, 0.1), 0, 0.3) 转向能力不足
+            else:   # 目标点与机器人间存在障碍,即先要避开当前的障碍
+                # 激光观测数组从机器人的右边到左边排列,即数组低位对应右端激光.
+                largest_index = Nlargest(s[0])
+                direction = np.mean(largest_index) # 270°对应180维, 求得方向决定后续打角.
+                # print("The direction:",direction)
+                # print("The index:",largest_index)
+                if direction < 60: # action[0, 1]角速度为负数, 则机器人右转.反之左转。
+                    action[0, 1] = -abs(90 - direction) * 0.01 + np.clip(np.random.normal(-0.5, 0.1), -0.7, -0.3)
+                elif direction >= 60 and direction < 120:
+                    pass
+                else:
+                    action[0, 1] = abs(90 - direction) * 0.01 + np.clip(np.random.normal(0.5, 0.1), 0.3, 0.7)  # np.clip(np.random.normal(0.2, 0.1), 0, 0.3) 转向能力不足
+                pass
+        ##################################################################
+        # if np.random.rand() < var/2:
+        #     # print("The basic Control Law.")
+        #     # 激光观测数组从机器人的右边到左边排列,即数组低位对应右端激光.
+        #     largest_index = Nlargest(s[0])
+        #     direction = np.mean(largest_index) # 270°对应180维, 求得方向决定后续打角.
+        #     # print("The direction:",direction)
+        #     # print("The index:",largest_index)
+        #     if direction < 60: # action[0, 1]角速度为负数, 则机器人右转.反之左转。
+        #         action[0, 1] = -abs(90 - direction) * 0.01 + np.clip(np.random.normal(-0.5, 0.1), -0.7, -0.3)
+        #     elif direction >= 60 and direction < 120:
+        #         pass
+        #     else:
+        #         action[0, 1] = abs(90 - direction) * 0.01 + np.clip(np.random.normal(0.5, 0.1), 0.3, 0.7)  # np.clip(np.random.normal(0.2, 0.1), 0, 0.3) 转向能力不足
+            #####################################################################
             ## 这部分策略并不适合隧道的行走, 只适合避开前面的障碍物
             # if s[0].min() <= 0.1:  # obstacle avoidance
             #     # 判定障碍物方位, 决定左右转
