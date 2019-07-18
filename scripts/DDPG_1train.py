@@ -115,6 +115,7 @@ class Memory(object):  # stored as ( s, a, r, s_ ) in SumTree
         self.tree.add(max_p, transition)  # set the max p for new p
 
     def sample(self, n, update=True):
+        # 1 batch training error.
         b_idx, b_memory, ISWeights = np.empty((n,), dtype=np.int32), np.empty((n, self.tree.data[0].size)), np.empty((n, 1))
         pri_seg = self.tree.total_p / n  # priority segment
         self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])  # max = 1
@@ -194,7 +195,7 @@ class DDPG(object):
         self.atrain = tf.train.AdamOptimizer(LR_A).minimize(self.a_loss, var_list=self.ae_params)
 
         self.sess.run(tf.global_variables_initializer())
-        self.saver = tf.train.Saver(max_to_keep=1000)
+        self.saver = tf.train.Saver(max_to_keep=5000)
         # self.saver.restore(self.sess, "/home/pygmalionchen/PycharmProjects/treasure/logs/pddpg/models/toPoints/model_53000.ckpt")   # 选了toPoint的预训练模型载入
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-05-07_20:31/models/model_350000.ckpt")
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-05-11/models/model_150000.ckpt")
@@ -407,7 +408,7 @@ for i in trange(MAX_EPISODES):
     s, p, r, done = env._step(action, goal, first)
     first = False
     # va_math = 0.
-    var *= .9998
+    var *= .99998  # .9998
     # print("Step: ",step)
     # goal = goal + (np.random.rand(2) - 0.5)  # 为训练部分的目标点添加一定的随机性
     while (j < MAX_GOAL_STEPS):  # and (success_num + fail_num <= 100):
@@ -512,7 +513,8 @@ for i in trange(MAX_EPISODES):
         ep_reward += float(sum(r))
         # sum(dis)
         step += 1
-        if j % 10 == 0 and total_step >= MEMORY_CAPACITY:  # if j % 10 == 0 and total_step >= MEMORY_CAPACITY:
+        # j error # j % 10 == 0 and
+        if total_step >= MEMORY_CAPACITY:  # if j % 10 == 0 and total_step >= MEMORY_CAPACITY:
             ddpg.learn(True)
         if j == MAX_GOAL_STEPS - 1 or done: # 一个episode结束也需要计算一次ep_reward.
             v2 = tf.Summary.Value(tag='ep_reward', simple_value=ep_reward)

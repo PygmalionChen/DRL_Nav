@@ -124,6 +124,10 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
         return theta
 
     def _step(self, action, goal, first=False):
+        coef_theta = 0.1
+        coef_speed = 0.5 #0.1
+        coef_colli = 0.2
+        coef_dist = 0.1
         vcmds = []
         vcmds.append(Twist())
         vcmds[0].linear.x = action[0][0]
@@ -161,33 +165,33 @@ class DDPGEnv1Go(gazebo_env.GazeboEnv):
         # goal_dis = goal_matrix[i, i]
         # goal_dis = np.min(goal_matrix[i, :])  # 得到每个机器人离最近目标点的距离
         if abs(theta) > 0.5:
-            reward[0] -= 2 * abs(theta)
+            reward[0] -= coef_theta * abs(theta)
         else:
-            reward[0] += 2 * abs(theta)
+            reward[0] += coef_theta * abs(theta)
         if abs(vcmds[0].linear.x) < 0.3:
-            reward[0] -= 0.5
+            reward[0] -= coef_speed * 1
         else:
             pass
         if abs(vcmds[0].angular.z) > 0.6:  # 转向快的惩罚
-            reward[0] -= abs(vcmds[0].angular.z)
+            reward[0] -= coef_speed * abs(vcmds[0].angular.z)
         else:
             pass
         if not (done_list or collision):
             pass
         elif collision:
             # 碰撞处理只处理单个持续碰撞才重置
-            reward[0] -= 5  # 原来给2的 penality 不够
+            reward[0] -= coef_colli * 3  # 原来给2的 penality 不够
             self.resetState(0)
         # 根据距离信息粗略给定一个动态Reward, 并进行到达检测.
         if goal_dis < 0.1:
             done_list = True
-            reward[0] += 8
+            reward[0] += coef_dist * 4
         elif goal_dis < 0.3 and goal_dis >= 0.1:
-            reward[0] += 2
+            reward[0] += coef_dist * 2
         elif goal_dis < 1 and goal_dis >= 0.3:
-            reward[0] += 1
+            reward[0] += coef_dist * 1
         else:
-            reward[0] -= 0.5
+            reward[0] -= coef_dist * 0.5
 
         return np.array(state_list), np.array(param_list), np.array(reward), done_list
 

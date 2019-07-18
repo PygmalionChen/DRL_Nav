@@ -188,7 +188,7 @@ class DDPG(object):
 
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/formation/model_190000.ckpt")
         # self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/GoodModule/toPoints/model_53000.ckpt")
-        self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-05-16_23_08/models/model_240000.ckpt")
+        self.saver.restore(self.sess,"/home/pygmalionchen/PycharmProjects/TensorflowPrj/DRL_Nav/logs/DDPG_1Go/2019-07-02_23_07/models/model_880000.ckpt")
 
         self.merged = tf.summary.merge_all()
         self.loss_writer = tf.summary.FileWriter(self.out_dir, self.sess.graph)
@@ -381,7 +381,7 @@ for i in trange(TestEpisodes):
     while (j < MAX_GOAL_STEPS and not done):
         action = ddpg.choose_action(s.reshape([nor, 1, s_dim]).transpose(0, 2, 1), p)
         #############################################################
-        if 1:
+        if 0:
             gl_dis = np.sqrt((env.listen_class.odom_list[0].pose.pose.position.x - goal[0]) ** 2 + ( env.listen_class.odom_list[0].pose.pose.position.y - goal[1]) ** 2) / env.max_range_dis
             print("gl_dis: ", gl_dis)
             head_largest = np.max(heapq.nlargest(30, s[0][60:120]))
